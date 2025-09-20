@@ -1,0 +1,56 @@
+# CarFin AI - Vercel 자동 배포
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Frontend/carfin-ui/**'
+  workflow_dispatch:  # 수동 실행 가능
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    name: Deploy CarFin UI to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: Frontend/carfin-ui/package-lock.json
+
+    - name: Install Vercel CLI
+      run: npm install -g vercel@latest
+
+    - name: Install dependencies
+      run: |
+        cd Frontend/carfin-ui
+        npm ci
+
+    - name: Build application
+      run: |
+        cd Frontend/carfin-ui
+        npm run build
+
+    - name: Deploy to Vercel
+      run: |
+        cd Frontend/carfin-ui
+        vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+      env:
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    - name: Get deployment URL
+      run: |
+        echo "🚀 CarFin UI deployed successfully!"
+        echo "📍 Frontend URL: https://carfin-ai.vercel.app"
+        echo "🎯 Full Stack Ready!"
