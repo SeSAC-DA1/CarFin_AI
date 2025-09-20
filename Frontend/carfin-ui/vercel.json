@@ -1,34 +1,23 @@
 {
-  "name": "carfin-ai",
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "public": true,
+  "regions": ["icn1", "hnd1"],
   "env": {
-    "NEXT_PUBLIC_API_URL": "@api_url",
-    "NEXT_PUBLIC_MCP_URL": "@mcp_url"
+    "NODE_ENV": "production"
   },
   "build": {
     "env": {
-      "NEXT_PUBLIC_API_URL": "@api_url",
-      "NEXT_PUBLIC_MCP_URL": "@mcp_url"
+      "NODE_ENV": "production",
+      "NEXT_TELEMETRY_DISABLED": "1"
     }
   },
   "functions": {
-    "pages/api/**/*.js": {
+    "app/**": {
       "maxDuration": 30
     }
   }
