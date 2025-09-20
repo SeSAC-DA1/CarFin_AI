@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CarFin-MCP Server - 멀티에이전트 협업 및 NCF 통합 서버
-48시간 베타 버전 - 핵심 기능 우선 구현
+Production 배포 버전 v1.0.0 - 2025-09-21
 """
 
 import asyncio
