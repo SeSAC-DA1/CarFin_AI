@@ -6,7 +6,6 @@
   "installCommand": "npm install",
   "outputDirectory": ".next",
   "public": true,
-  "regions": ["icn1", "hnd1"],
   "env": {
     "NODE_ENV": "production"
   },

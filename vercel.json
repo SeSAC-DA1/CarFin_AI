@@ -7,7 +7,6 @@
   "installCommand": "cd Frontend/carfin-ui && npm install",
   "outputDirectory": "Frontend/carfin-ui/.next",
   "public": true,
-  "regions": ["icn1", "hnd1"],
   "env": {
     "NODE_ENV": "production",
     "NEXT_TELEMETRY_DISABLED": "1"
