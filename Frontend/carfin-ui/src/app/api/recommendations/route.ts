@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         throw new Error(`FastAPI Error: ${response.statusText}`);
       }
 
-      const recommendations: RecommendationResponse = await response.json();
+      let recommendations: RecommendationResponse = await response.json();
 
       // FastAPI 응답을 Next.js 형식으로 변환
       if (recommendations.recommendations) {
@@ -90,35 +90,56 @@ export async function POST(request: NextRequest) {
           confidence: rec.confidence || rec.score || 0.8
         }));
       }
+
+      // A/B 테스트 메트릭 기록 (노출)
+      experimentManager.recordMetric(
+        'algorithm_comparison_v1',
+        body.userId,
+        'impression',
+        recommendations.recommendations.length
+      );
+
+      // 응답 시간 기록
+      const processingTime = Date.now() - startTime;
+      recommendations.metadata.processingTime = processingTime;
+
+      console.log('✅ 추천 완료:', {
+        userId: body.userId,
+        count: recommendations.recommendations.length,
+        processingTime: `${processingTime}ms`,
+        source: 'fastapi'
+      });
+
+      return NextResponse.json(recommendations);
     } catch (fetchError) {
       console.warn('FastAPI 호출 실패, Mock 엔진 사용:', fetchError);
 
       // Fallback to mock engine
-      recommendations = await mockRecommendationEngine.getRecommendations(
+      const recommendations = await mockRecommendationEngine.getRecommendations(
         recommendationRequest
       );
+
+      // A/B 테스트 메트릭 기록 (노출)
+      experimentManager.recordMetric(
+        'algorithm_comparison_v1',
+        body.userId,
+        'impression',
+        recommendations.recommendations.length
+      );
+
+      // 응답 시간 기록
+      const processingTime = Date.now() - startTime;
+      recommendations.metadata.processingTime = processingTime;
+
+      console.log('✅ 추천 완료 (Mock):', {
+        userId: body.userId,
+        count: recommendations.recommendations.length,
+        processingTime: `${processingTime}ms`,
+        source: 'mock'
+      });
+
+      return NextResponse.json(recommendations);
     }
-
-    // A/B 테스트 메트릭 기록 (노출)
-    experimentManager.recordMetric(
-      'algorithm_comparison_v1',
-      body.userId,
-      'impression',
-      recommendations.recommendations.length
-    );
-
-    // 응답 시간 기록
-    const processingTime = Date.now() - startTime;
-    recommendations.metadata.processingTime = processingTime;
-
-    console.log('✅ 추천 완료:', {
-      userId: body.userId,
-      count: recommendations.recommendations.length,
-      processingTime: `${processingTime}ms`,
-      experimentVariant: experimentConfig.algorithm_comparison_v1?.variant
-    });
-
-    return NextResponse.json(recommendations);
 
   } catch (error) {
     console.error('❌ 추천 API 오류:', error);

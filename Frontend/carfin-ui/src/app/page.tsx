@@ -116,7 +116,7 @@ export default function CarFinPage() {
   if (currentPhase === 'grid') {
     return (
       <ModernVehicleGrid
-        userProfile={{ ...userProfile, ...collectedData } || {}}
+        userProfile={{ ...userProfile, ...collectedData }}
         onSelectionComplete={handleVehicleSelection}
       />
     );
