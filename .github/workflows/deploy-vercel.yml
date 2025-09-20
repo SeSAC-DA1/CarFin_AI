@@ -1,4 +1,4 @@
-# CarFin AI - Vercel 자동 배포
+# CarFin AI - Vercel 배포 (Vercel GitHub Integration 사용)
 name: Deploy to Vercel
 
 on:
@@ -6,11 +6,7 @@ on:
     branches: [ main ]
     paths:
       - 'Frontend/carfin-ui/**'
-  workflow_dispatch:  # 수동 실행 가능
-
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -21,34 +17,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-
-    - name: Install Vercel CLI
-      run: npm install -g vercel@latest
-
-    - name: Install dependencies
-      working-directory: Frontend/carfin-ui
-      run: npm ci
-
-    - name: Build application
-      working-directory: Frontend/carfin-ui
-      run: npm run build
-
     - name: Deploy to Vercel
-      working-directory: Frontend/carfin-ui
-      run: |
-        vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-      env:
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./Frontend/carfin-ui
+        vercel-args: '--prod'
 
     - name: Get deployment URL
       run: |
         echo "🚀 CarFin UI deployed successfully!"
-        echo "📍 Frontend URL: https://carfin-ai.vercel.app"
+        echo "📍 Check Vercel Dashboard for URL"
         echo "🎯 Full Stack Ready!"
