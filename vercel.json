@@ -10,8 +10,7 @@
   "public": true,
   "env": {
     "NODE_ENV": "production",
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "NEXT_PUBLIC_API_URL": "https://carfin-mcp-983974250633.asia-northeast1.run.app"
+    "NEXT_TELEMETRY_DISABLED": "1"
   },
   "build": {
     "env": {

@@ -2,7 +2,7 @@
  * CarFin API Client - FastAPI 백엔드와 통신 (강화된 에러 핸들링)
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
 interface ApiResponse<T> {
   success: boolean;
@@ -159,7 +159,7 @@ class CarFinAPIClient {
 
   // 헬스체크 (빠른 응답 필요)
   async healthCheck() {
-    return this.request('/health', {
+    return this.request('/api/vehicles?limit=1', {
       timeout: 5000, // 5초로 단축
       retries: 1 // 재시도 1회로 제한
     });
@@ -204,7 +204,7 @@ class CarFinAPIClient {
       });
     }
 
-    const endpoint = `/api/v1/vehicles${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const endpoint = `/api/vehicles${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.request(endpoint, {
       timeout: 20000, // 차량 데이터는 큰 데이터셋이므로 더 긴 시간 허용
       retries: 5, // 중요한 API이므로 재시도 횟수 증가
