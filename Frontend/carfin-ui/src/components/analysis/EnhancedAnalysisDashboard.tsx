@@ -21,7 +21,9 @@ import {
   ThumbsDown,
   AlertTriangle,
   Target,
-  Zap
+  Zap,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { PentagonChart } from './PentagonChart';
 
@@ -40,6 +42,9 @@ interface Vehicle {
   safety_rating: number;
   match_score: number;
   description: string;
+  images?: string[];
+  color?: string;
+  highlight?: string;
 }
 
 interface VehicleFeedback {
@@ -85,6 +90,7 @@ export function EnhancedAnalysisDashboard({
   const [analysis, setAnalysis] = useState<PersonalizedAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   const currentVehicle = selectedVehicles && selectedVehicles.length > 0
     ? (selectedVehicles[selectedVehicleIndex] || selectedVehicles[0])
@@ -259,8 +265,20 @@ export function EnhancedAnalysisDashboard({
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 mb-8">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-6">
-              <div className="w-24 h-24 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                <Car className="w-12 h-12 text-blue-600" />
+              <div className="w-24 h-24 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+                {currentVehicle.images && currentVehicle.images[0] ? (
+                  <img
+                    src={currentVehicle.images[0]}
+                    alt={`${currentVehicle.brand} ${currentVehicle.model}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <Car className={`w-12 h-12 text-blue-600 ${currentVehicle.images?.[0] ? 'hidden' : ''}`} />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -272,7 +290,7 @@ export function EnhancedAnalysisDashboard({
                   </div>
                 </div>
                 <p className="text-gray-600 mb-4">{currentVehicle.year}년식 • {currentVehicle.body_type}</p>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
                   <div className="flex items-center gap-1">
                     <Gauge className="w-4 h-4" />
                     <span>{currentVehicle.mileage.toLocaleString()}km</span>
@@ -281,14 +299,37 @@ export function EnhancedAnalysisDashboard({
                     <Fuel className="w-4 h-4" />
                     <span>{currentVehicle.fuel_type}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-4 h-4" />
-                    <span>{currentVehicle.fuel_efficiency}km/L</span>
-                  </div>
+                  {currentVehicle.fuel_type !== '전기' && (
+                    <div className="flex items-center gap-1">
+                      <Zap className="w-4 h-4" />
+                      <span>{currentVehicle.fuel_efficiency}km/L</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
                     <span>{currentVehicle.location}</span>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    <div className="flex items-center">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3 h-3 ${
+                            i < currentVehicle.safety_rating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {currentVehicle.color && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 rounded-full border border-gray-300 bg-gray-100"></div>
+                      <span>{currentVehicle.color}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -480,6 +521,44 @@ export function EnhancedAnalysisDashboard({
             다른 차량 보기
           </Button>
         </div>
+
+        {/* 상세 설명 섹션 */}
+        {currentVehicle.description && (
+          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">📝 차량 상세 분석</h3>
+            <div className="relative">
+              <p
+                className="text-gray-700 leading-relaxed"
+                style={{
+                  display: showFullDescription ? 'block' : '-webkit-box',
+                  WebkitLineClamp: showFullDescription ? 'none' : 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: showFullDescription ? 'visible' : 'hidden'
+                }}
+              >
+                {currentVehicle.description}
+              </p>
+              {currentVehicle.description.length > 100 && (
+                <button
+                  onClick={() => setShowFullDescription(!showFullDescription)}
+                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                >
+                  {showFullDescription ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      간단히 보기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      자세히 보기
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 주의사항 */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">

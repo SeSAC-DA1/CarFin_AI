@@ -2,14 +2,16 @@
   "version": 2,
   "name": "carfin-ai",
   "framework": "nextjs",
-  "buildCommand": "cd Frontend/carfin-ui && npm run build",
-  "devCommand": "cd Frontend/carfin-ui && npm run dev",
-  "installCommand": "cd Frontend/carfin-ui && npm install",
-  "outputDirectory": "Frontend/carfin-ui/.next",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "rootDirectory": "Frontend/carfin-ui",
   "public": true,
   "env": {
     "NODE_ENV": "production",
-    "NEXT_TELEMETRY_DISABLED": "1"
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NEXT_PUBLIC_API_URL": "https://carfin-mcp-983974250633.asia-northeast1.run.app"
   },
   "build": {
     "env": {
@@ -18,14 +20,8 @@
     }
   },
   "functions": {
-    "Frontend/carfin-ui/app/**": {
+    "app/**": {
       "maxDuration": 30
     }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/Frontend/carfin-ui/$1"
-    }
-  ]
+  }
 }

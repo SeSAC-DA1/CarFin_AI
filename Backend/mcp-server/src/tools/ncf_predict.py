@@ -15,6 +15,7 @@ import json
 import pickle
 import os
 from dataclasses import dataclass
+import sqlite3
 
 logger = logging.getLogger("CarFin-MCP.NCFPredict")
 
@@ -293,6 +294,157 @@ class NCFPredictTool:
                 "items_encoded": len(self.item_encoder)
             }
         }
+
+    async def online_learning_update(self, user_id: str, item_id: str, rating: float) -> Dict[str, Any]:
+        """실시간 온라인 학습 업데이트"""
+        try:
+            start_time = datetime.now()
+
+            # 사용자/아이템 인코딩
+            user_idx = self._encode_user(user_id, {"user_id": user_id})
+            item_idx = self._encode_item(item_id, {"vehicleid": item_id})
+
+            # 현재 예측값 계산
+            with torch.no_grad():
+                user_tensor = torch.tensor([user_idx], device=self.device)
+                item_tensor = torch.tensor([item_idx], device=self.device)
+                current_pred = self.model(user_tensor, item_tensor).item()
+
+            # 온라인 학습 수행
+            optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+            criterion = nn.MSELoss()
+
+            self.model.train()
+
+            # 실제 평점을 0-1 스케일로 정규화
+            normalized_rating = (rating - 1) / 4  # 1-5 scale -> 0-1 scale
+
+            target = torch.tensor([normalized_rating], device=self.device, dtype=torch.float32)
+            prediction = self.model(user_tensor, item_tensor)
+
+            loss = criterion(prediction, target)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            self.model.eval()
+
+            # 업데이트 후 예측값 계산
+            with torch.no_grad():
+                updated_pred = self.model(user_tensor, item_tensor).item()
+
+            # 학습 기록 저장
+            await self._save_learning_record(user_id, item_id, rating, current_pred, updated_pred, loss.item())
+
+            execution_time = (datetime.now() - start_time).total_seconds()
+
+            logger.info(f"🧠 온라인 학습 완료: 사용자 {user_id}, 아이템 {item_id}, 평점 {rating}")
+
+            return {
+                "success": True,
+                "user_id": user_id,
+                "item_id": item_id,
+                "rating": rating,
+                "prediction_before": current_pred,
+                "prediction_after": updated_pred,
+                "loss": loss.item(),
+                "improvement": abs(updated_pred - normalized_rating) < abs(current_pred - normalized_rating),
+                "execution_time": execution_time
+            }
+
+        except Exception as e:
+            logger.error(f"❌ 온라인 학습 실패: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "user_id": user_id,
+                "item_id": item_id
+            }
+
+    async def _save_learning_record(self, user_id: str, item_id: str, rating: float,
+                                  pred_before: float, pred_after: float, loss: float):
+        """학습 기록 저장"""
+        try:
+            db_path = os.path.join(self.model_dir, "learning_records.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # 테이블 생성 (존재하지 않는 경우)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS learning_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    item_id TEXT NOT NULL,
+                    rating REAL NOT NULL,
+                    prediction_before REAL NOT NULL,
+                    prediction_after REAL NOT NULL,
+                    loss_value REAL NOT NULL,
+                    improvement BOOLEAN NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            improvement = abs(pred_after - (rating - 1) / 4) < abs(pred_before - (rating - 1) / 4)
+
+            cursor.execute('''
+                INSERT INTO learning_records
+                (user_id, item_id, rating, prediction_before, prediction_after, loss_value, improvement)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, item_id, rating, pred_before, pred_after, loss, improvement))
+
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            logger.error(f"학습 기록 저장 실패: {e}")
+
+    async def get_learning_statistics(self) -> Dict[str, Any]:
+        """학습 통계 조회"""
+        try:
+            db_path = os.path.join(self.model_dir, "learning_records.db")
+            if not os.path.exists(db_path):
+                return {"total_updates": 0, "avg_loss": 0, "improvement_rate": 0}
+
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # 전체 업데이트 수
+            cursor.execute('SELECT COUNT(*) FROM learning_records')
+            total_updates = cursor.fetchone()[0]
+
+            # 평균 손실
+            cursor.execute('SELECT AVG(loss_value) FROM learning_records')
+            avg_loss = cursor.fetchone()[0] or 0
+
+            # 개선률
+            cursor.execute('SELECT AVG(CAST(improvement as REAL)) FROM learning_records')
+            improvement_rate = cursor.fetchone()[0] or 0
+
+            # 최근 24시간 통계
+            cursor.execute('''
+                SELECT COUNT(*), AVG(loss_value), AVG(CAST(improvement as REAL))
+                FROM learning_records
+                WHERE timestamp >= datetime('now', '-1 day')
+            ''')
+            recent_stats = cursor.fetchone()
+
+            conn.close()
+
+            return {
+                "total_updates": total_updates,
+                "avg_loss": float(avg_loss),
+                "improvement_rate": float(improvement_rate * 100),
+                "recent_24h": {
+                    "updates": recent_stats[0] or 0,
+                    "avg_loss": float(recent_stats[1] or 0),
+                    "improvement_rate": float((recent_stats[2] or 0) * 100)
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"학습 통계 조회 실패: {e}")
+            return {"error": str(e)}
 
     async def _predict_batch(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """배치 예측 (여러 사용자)"""

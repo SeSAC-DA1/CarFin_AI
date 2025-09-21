@@ -29,6 +29,8 @@ import {
   VehicleFeedback,
   ModernVehicleGridProps
 } from '@/types';
+import { transformMultipleVehicles, recalculateMatchScore } from '@/lib/vehicle-utils';
+import { RealVehicleData } from '@/app/api/vehicles/route';
 
 export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVehicleGridProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -36,6 +38,7 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
   const [isLoading, setIsLoading] = useState(true);
   const [showIntro, setShowIntro] = useState(true);
   const [currentPhase, setCurrentPhase] = useState<'selection' | 'completed'>('selection');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadVehicles();
@@ -43,128 +46,104 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
 
   const loadVehicles = async () => {
     setIsLoading(true);
+    setError(null);
 
-    const attractiveVehicles = getAttractiveVehicles();
-    setVehicles(attractiveVehicles);
-    setIsLoading(false);
+    try {
+      console.log('🚗 실제 차량 데이터 로딩 시작:', {
+        userProfile: userProfile ? 'Present' : 'None',
+        timestamp: new Date().toISOString()
+      });
+
+      // 사용자 프로필 기반 필터 파라미터 구성
+      const params = new URLSearchParams();
+
+      // 기본 필터 (더 관대한 범위로 설정)
+      params.append('minPrice', '500');
+      params.append('maxPrice', '8000');
+      params.append('maxDistance', '200000');
+      params.append('minYear', '2010');
+      params.append('limit', '20');
+
+      // 사용자 프로필 기반 추가 필터
+      if (userProfile) {
+        const budget = userProfile.budgetRange as { min: number; max: number } | undefined;
+        if (budget) {
+          params.set('minPrice', budget.min.toString());
+          params.set('maxPrice', budget.max.toString());
+        }
+
+        const preferences = userProfile.preferences as string[] | undefined;
+        if (preferences?.length) {
+          const fuelTypes = preferences.filter(p =>
+            ['가솔린', '디젤', '하이브리드', '전기', 'LPG'].includes(p)
+          );
+          if (fuelTypes.length > 0) {
+            params.append('fuelType', fuelTypes[0]);
+          }
+        }
+
+        const preferredBrand = userProfile.preferredBrand as string | undefined;
+        if (preferredBrand) {
+          params.append('manufacturer', preferredBrand);
+        }
+      }
+
+      console.log('📊 API 요청 파라미터:', Object.fromEntries(params));
+
+      // 실제 차량 데이터 API 호출
+      const response = await fetch(`/api/vehicles?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const apiData = await response.json();
+      console.log('✅ API 응답 받음:', {
+        success: apiData.success,
+        count: apiData.count,
+        vehiclesLength: apiData.vehicles?.length || 0
+      });
+
+      if (!apiData.success) {
+        throw new Error(apiData.error || '차량 데이터 로딩 실패');
+      }
+
+      // RealVehicleData를 Vehicle로 변환
+      const realVehicleData: RealVehicleData[] = apiData.vehicles || [];
+      let transformedVehicles = transformMultipleVehicles(realVehicleData);
+
+      // 사용자 프로필 기반 매칭 점수 재계산
+      if (userProfile) {
+        transformedVehicles = transformedVehicles.map(vehicle =>
+          recalculateMatchScore(vehicle, userProfile)
+        );
+      }
+
+      // 매칭 점수순으로 정렬
+      transformedVehicles.sort((a, b) => b.match_score - a.match_score);
+
+      console.log('🎯 변환 완료:', {
+        totalVehicles: transformedVehicles.length,
+        topScores: transformedVehicles.slice(0, 3).map(v => ({
+          brand: v.brand,
+          model: v.model,
+          score: v.match_score
+        }))
+      });
+
+      setVehicles(transformedVehicles);
+
+    } catch (error) {
+      console.error('❌ 차량 데이터 로딩 오류:', error);
+      setError(error instanceof Error ? error.message : '차량 데이터 로딩 중 오류가 발생했습니다');
+
+      // 오류 발생 시 빈 배열로 설정
+      setVehicles([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const getAttractiveVehicles = (): Vehicle[] => [
-    {
-      id: "1",
-      brand: "테슬라",
-      model: "모델 3",
-      year: 2022,
-      price: 4200,
-      mileage: 15000,
-      fuel_type: "전기",
-      body_type: "세단",
-      color: "화이트",
-      location: "서울",
-      images: ["/api/placeholder/400/300"],
-      features: ["오토파일럿", "슈퍼차징", "OTA업데이트"],
-      fuel_efficiency: 0,
-      safety_rating: 5,
-      match_score: 95,
-      description: "완전 자율주행 기능과 무선 업데이트로 계속 진화하는 전기차. 슈퍼차저 네트워크로 전국 어디든 빠른 충전 가능. 연비 걱정 없이 월 전기료 10만원대로 운행 가능.",
-      highlight: "🔥 인기급상승"
-    },
-    {
-      id: "2",
-      brand: "현대",
-      model: "그랜저",
-      year: 2023,
-      price: 3500,
-      mileage: 8000,
-      fuel_type: "하이브리드",
-      body_type: "세단",
-      color: "화이트",
-      location: "경기",
-      images: ["/api/placeholder/400/300"],
-      features: ["마사지시트", "디스플레이오디오", "V2L"],
-      fuel_efficiency: 15.9,
-      safety_rating: 5,
-      match_score: 92,
-      description: "국산 최고급 대형 세단으로 뒷좌석 마사지 시트와 냉온장고 구비. 하이브리드로 시내 연비 17km/L 달성. 캠핑용 V2L 기능으로 외부 전원 공급도 가능한 실용적 럭셔리.",
-      highlight: "✨ 신차급"
-    },
-    {
-      id: "3",
-      brand: "기아",
-      model: "EV6",
-      year: 2023,
-      price: 4800,
-      mileage: 5000,
-      fuel_type: "전기",
-      body_type: "SUV",
-      color: "화이트",
-      location: "인천",
-      images: ["/api/placeholder/400/300"],
-      features: ["초고속충전", "V2L", "얼굴인식"],
-      fuel_efficiency: 0,
-      safety_rating: 5,
-      match_score: 90,
-      description: "18분만에 80% 충전 가능한 초고속 충전 기술과 최대 3.5kW V2L로 가전제품 사용 가능. 얼굴인식 시트 자동 조절과 AR 내비게이션으로 미래형 드라이빙 경험 제공.",
-      highlight: "⚡ 신기술"
-    },
-    {
-      id: "4",
-      brand: "제네시스",
-      model: "G90",
-      year: 2022,
-      price: 6200,
-      mileage: 12000,
-      fuel_type: "가솔린",
-      body_type: "세단",
-      color: "그레이",
-      location: "서울",
-      images: ["/api/placeholder/400/300"],
-      features: ["나파가죽", "3D서라운드", "에어서스펜션"],
-      fuel_efficiency: 9.8,
-      safety_rating: 5,
-      match_score: 85,
-      description: "수제 나파가죽 시트와 렉시콘 3D 서라운드 오디오로 최고급 안락함 제공. 에어 서스펜션으로 노면 상태 관계없이 매끄러운 승차감. 대통령차 급의 품격과 안전성.",
-      highlight: "💎 최고급"
-    },
-    {
-      id: "5",
-      brand: "BMW",
-      model: "320i",
-      year: 2021,
-      price: 3800,
-      mileage: 28000,
-      fuel_type: "가솔린",
-      body_type: "세단",
-      color: "블랙",
-      location: "서울",
-      images: ["/api/placeholder/400/300"],
-      features: ["런플랫타이어", "하만카돈", "무선충전"],
-      fuel_efficiency: 13.1,
-      safety_rating: 5,
-      match_score: 88,
-      description: "독일산 프리미엄 스포츠 세단으로 50:50 완벽한 무게배분과 후륜구동의 짜릿한 주행감 제공. 하만카돈 오디오와 런플랫 타이어로 안전하고 품격있는 드라이빙. 유지비는 국산차 수준.",
-      highlight: "👑 프리미엄"
-    },
-    {
-      id: "6",
-      brand: "렉서스",
-      model: "ES300h",
-      year: 2022,
-      price: 5200,
-      mileage: 18000,
-      fuel_type: "하이브리드",
-      body_type: "세단",
-      color: "블랙",
-      location: "서울",
-      images: ["/api/placeholder/400/300"],
-      features: ["마크레빈슨", "세미아닐린가죽", "LSS+"],
-      fuel_efficiency: 17.2,
-      safety_rating: 5,
-      match_score: 89,
-      description: "일본 최고급 하이브리드로 마크레빈슨 프리미엄 오디오와 세미아닐린 가죽으로 감싸진 실내. 연비 18km/L과 15년 무상 A/S로 경제성과 신뢰성 모두 확보. 조용하고 부드러운 승차감.",
-      highlight: "🎯 추천"
-    }
-  ];
 
   const handleVehicleFeedback = (vehicleId: string, feedbackType: VehicleFeedback['feedbackType']) => {
     setVehicleFeedbacks(prev => ({
@@ -282,6 +261,29 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">차량 데이터 로딩 오류</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button
+            onClick={() => {
+              setError(null);
+              loadVehicles();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -289,8 +291,28 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Car className="w-8 h-8 text-blue-600 animate-pulse" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">AI가 차량을 준비하고 있어요</h2>
-          <p className="text-gray-600">당신에게 맞는 차량들을 선별중입니다...</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">실제 차량 데이터를 불러오고 있어요</h2>
+          <p className="text-gray-600">PostgreSQL에서 85,320개 차량 중 맞춤 추천을 준비중입니다...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (vehicles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Car className="w-8 h-8 text-yellow-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">조건에 맞는 차량이 없습니다</h2>
+          <p className="text-gray-600 mb-4">검색 조건을 조정하거나 다시 시도해주세요</p>
+          <Button
+            onClick={() => loadVehicles()}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            다시 검색
+          </Button>
         </div>
       </div>
     );
