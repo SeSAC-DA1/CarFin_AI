@@ -88,7 +88,10 @@ class UserBehaviorTracker {
     this.sessionId = this.generateSessionId();
     this.sessionStartTime = new Date();
     this.pageStartTime = new Date();
-    this.loadStoredInteractions();
+    // 클라이언트 환경에서만 localStorage 접근
+    if (typeof window !== 'undefined') {
+      this.loadStoredInteractions();
+    }
   }
 
   private generateSessionId(): string {
@@ -96,6 +99,8 @@ class UserBehaviorTracker {
   }
 
   private loadStoredInteractions(): void {
+    if (typeof window === 'undefined') return;
+
     try {
       const stored = localStorage.getItem('userInteractions');
       if (stored) {
@@ -110,6 +115,8 @@ class UserBehaviorTracker {
   }
 
   private saveInteractions(): void {
+    if (typeof window === 'undefined') return;
+
     try {
       // 최근 1000개 인터랙션만 저장 (성능 최적화)
       const recentInteractions = this.interactions.slice(-1000);
@@ -328,15 +335,17 @@ class UserBehaviorTracker {
   }
 
   getUserProfile(userId: string): UserPreferenceProfile {
-    try {
-      const stored = localStorage.getItem(`userProfile_${userId}`);
-      if (stored) {
-        const profile = JSON.parse(stored);
-        profile.updatedAt = new Date(profile.updatedAt);
-        return profile;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`userProfile_${userId}`);
+        if (stored) {
+          const profile = JSON.parse(stored);
+          profile.updatedAt = new Date(profile.updatedAt);
+          return profile;
+        }
+      } catch (error) {
+        console.warn('Failed to load user profile:', error);
       }
-    } catch (error) {
-      console.warn('Failed to load user profile:', error);
     }
 
     // 기본 프로필 생성
@@ -376,6 +385,8 @@ class UserBehaviorTracker {
   }
 
   private saveUserProfile(profile: UserPreferenceProfile): void {
+    if (typeof window === 'undefined') return;
+
     try {
       profile.updatedAt = new Date();
       localStorage.setItem(`userProfile_${profile.userId}`, JSON.stringify(profile));
@@ -523,6 +534,8 @@ class UserBehaviorTracker {
 
   // 세션 종료 시 호출
   endSession(): void {
+    if (typeof window === 'undefined') return;
+
     const sessionDuration = Date.now() - this.sessionStartTime.getTime();
     // 세션 통계 저장
     try {
