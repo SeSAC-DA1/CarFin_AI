@@ -9,19 +9,32 @@ export function ApiHealthCheck() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [responseTime, setResponseTime] = useState<number | null>(null);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [isOffline, setIsOffline] = useState<boolean>(false);
 
   const checkHealth = async () => {
     setStatus('loading');
     setError(null);
+    setResponseTime(null);
+    setRetryCount(0);
+    setIsOffline(false);
 
-    const response = await apiClient.healthCheck();
+    const startTime = Date.now();
+    const response = await apiClient.getApiStatus();
+    const endTime = Date.now();
+
+    setResponseTime(endTime - startTime);
 
     if (response.success) {
       setStatus('success');
       setData(response.data);
+      setRetryCount(response.retryCount || 0);
     } else {
       setStatus('error');
       setError(response.error || 'Unknown error');
+      setRetryCount(response.retryCount || 0);
+      setIsOffline(response.isOffline || false);
     }
   };
 
@@ -76,12 +89,21 @@ export function ApiHealthCheck() {
           <p><strong>Environment:</strong> {data.environment}</p>
           <p><strong>PostgreSQL:</strong> {data.databases?.postgresql}</p>
           <p><strong>Supabase:</strong> {data.databases?.supabase_auth}</p>
+          {responseTime && <p><strong>응답시간:</strong> {responseTime}ms</p>}
+          {retryCount > 0 && <p><strong>재시도:</strong> {retryCount}회</p>}
         </div>
       )}
 
       {status === 'error' && error && (
         <div className="text-sm text-red-600 mb-3">
           <p><strong>Error:</strong> {error}</p>
+          {responseTime && <p><strong>실패까지:</strong> {responseTime}ms</p>}
+          {retryCount > 0 && <p><strong>재시도:</strong> {retryCount}회</p>}
+          {isOffline && (
+            <div className="mt-2 p-2 bg-orange-100 rounded text-orange-800">
+              <p><strong>⚠️ 오프라인:</strong> 인터넷 연결을 확인하세요</p>
+            </div>
+          )}
         </div>
       )}
 

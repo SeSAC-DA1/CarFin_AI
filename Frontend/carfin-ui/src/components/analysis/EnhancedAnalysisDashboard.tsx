@@ -173,20 +173,20 @@ export function EnhancedAnalysisDashboard({
   // 차량이 선택되지 않았을 경우
   if (!currentVehicle) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-6">
-          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Car className="w-8 h-8 text-orange-600" />
+          <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-orange-500/30">
+            <Car className="w-8 h-8 text-orange-400" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <h2 className="text-xl font-bold text-white mb-4">
             선택된 차량이 없습니다
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-400 mb-6">
             분석을 위해 먼저 차량을 선택해주세요
           </p>
           <button
             onClick={onSelectDifferentVehicle}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white px-6 py-2 rounded-lg transition-all shadow-lg shadow-green-500/25"
           >
             차량 선택하러 가기
           </button>
@@ -197,13 +197,13 @@ export function EnhancedAnalysisDashboard({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="w-8 h-8 text-blue-600 animate-pulse" />
+          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+            <BarChart3 className="w-8 h-8 text-green-400 animate-pulse" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">당신만의 분석을 준비중...</h2>
-          <p className="text-gray-600">선택한 차량들과 피드백을 바탕으로 개인화된 분석을 생성하고 있어요</p>
+          <h2 className="text-xl font-bold text-white mb-2">당신만의 분석을 준비중...</h2>
+          <p className="text-gray-400">선택한 차량들과 피드백을 바탕으로 개인화된 분석을 생성하고 있어요</p>
         </div>
       </div>
     );
@@ -214,13 +214,13 @@ export function EnhancedAnalysisDashboard({
   const feedbackSummary = getUserFeedbackSummary();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-black/95 backdrop-blur-md border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">🎯 당신만의 차량 분석</h1>
-            <p className="text-gray-600">당신의 선택 패턴을 학습하여 개인화된 추천을 제공합니다</p>
+            <h1 className="text-3xl font-bold text-white mb-2">🎯 당신만의 차량 분석</h1>
+            <p className="text-gray-400">당신의 선택 패턴을 학습하여 개인화된 추천을 제공합니다</p>
           </div>
         </div>
       </div>
@@ -228,32 +228,32 @@ export function EnhancedAnalysisDashboard({
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* 최종 추천 차량들 */}
         {selectedVehicles.length > 1 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">🏆 최종 추천 {selectedVehicles.length}개</h2>
+          <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 mb-8 backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-white mb-4">🏆 최종 추천 {selectedVehicles.length}개</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {selectedVehicles.map((vehicle, index) => (
                 <div
                   key={vehicle.id}
                   className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     index === selectedVehicleIndex
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-green-500 bg-green-500/20'
+                      : 'border-gray-600 hover:border-gray-500'
                   }`}
                   onClick={() => setSelectedVehicleIndex(index)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <Car className="w-6 h-6 text-gray-400" />
+                    <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
+                      <Car className="w-6 h-6 text-gray-300" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-white">
                         {vehicle.brand} {vehicle.model}
                       </h3>
-                      <p className="text-sm text-gray-600">{vehicle.price.toLocaleString()}만원</p>
+                      <p className="text-sm text-gray-400">{vehicle.price.toLocaleString()}만원</p>
                     </div>
                   </div>
                   {index === selectedVehicleIndex && (
-                    <div className="mt-2 text-xs text-blue-600 font-medium">← 현재 분석 중</div>
+                    <div className="mt-2 text-xs text-green-400 font-medium">← 현재 분석 중</div>
                   )}
                 </div>
               ))}
@@ -262,10 +262,10 @@ export function EnhancedAnalysisDashboard({
         )}
 
         {/* 메인 차량 카드 */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 mb-8">
+        <div className="bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-2xl border border-gray-600 p-6 mb-8 backdrop-blur-sm">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-6">
-              <div className="w-24 h-24 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+              <div className="w-24 h-24 bg-gray-700 rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
                 {currentVehicle.images && currentVehicle.images[0] ? (
                   <img
                     src={currentVehicle.images[0]}
@@ -278,19 +278,19 @@ export function EnhancedAnalysisDashboard({
                     }}
                   />
                 ) : null}
-                <Car className={`w-12 h-12 text-blue-600 ${currentVehicle.images?.[0] ? 'hidden' : ''}`} />
+                <Car className={`w-12 h-12 text-green-400 ${currentVehicle.images?.[0] ? 'hidden' : ''}`} />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h2 className="text-3xl font-bold text-gray-900">
+                  <h2 className="text-3xl font-bold text-white">
                     {currentVehicle.brand} {currentVehicle.model}
                   </h2>
-                  <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                  <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium border border-green-500/30">
                     매치 {currentVehicle.match_score}%
                   </div>
                 </div>
-                <p className="text-gray-600 mb-4">{currentVehicle.year}년식 • {currentVehicle.body_type}</p>
-                <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                <p className="text-gray-400 mb-4">{currentVehicle.year}년식 • {currentVehicle.body_type}</p>
+                <div className="flex items-center gap-4 text-sm text-gray-400 flex-wrap">
                   <div className="flex items-center gap-1">
                     <Gauge className="w-4 h-4" />
                     <span>{currentVehicle.mileage.toLocaleString()}km</span>
@@ -334,10 +334,10 @@ export function EnhancedAnalysisDashboard({
               </div>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold text-blue-600 mb-1">
+              <div className="text-4xl font-bold text-green-400 mb-1">
                 {currentVehicle.price.toLocaleString()}만원
               </div>
-              <div className="flex items-center gap-1 text-sm text-green-600">
+              <div className="flex items-center gap-1 text-sm text-emerald-400">
                 <TrendingUp className="w-4 h-4" />
                 시장가 대비 합리적
               </div>
@@ -349,8 +349,8 @@ export function EnhancedAnalysisDashboard({
           {/* 왼쪽: 오각형 차트 & 주요 분석 */}
           <div className="xl:col-span-2 space-y-6">
             {/* 종합 성능 분석 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">📊 종합 성능 분석</h3>
+            <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+              <h3 className="text-xl font-bold text-white mb-6">📊 종합 성능 분석</h3>
               <div className="flex items-center justify-center">
                 <PentagonChart
                   data={analysis.pentagon_scores}
@@ -361,50 +361,50 @@ export function EnhancedAnalysisDashboard({
             </div>
 
             {/* 왜 이 차량을 추천하나요? */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Target className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30">
+                  <Target className="w-5 h-5 text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">🎯 왜 이 차량을 추천하나요?</h3>
+                <h3 className="text-xl font-bold text-white">🎯 왜 이 차량을 추천하나요?</h3>
               </div>
               <div className="space-y-3">
                 {analysis.whyRecommended.map((reason, index) => (
                   <div key={index} className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">{index + 1}</span>
+                    <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5 border border-green-500/30">
+                      <span className="text-xs font-bold text-green-400">{index + 1}</span>
                     </div>
-                    <p className="text-gray-700 leading-relaxed">{reason}</p>
+                    <p className="text-gray-300 leading-relaxed">{reason}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="mt-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
                 <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-blue-600" />
-                  <span className="font-semibold text-blue-900">신뢰도: {analysis.confidence}%</span>
+                  <Award className="w-5 h-5 text-green-400" />
+                  <span className="font-semibold text-green-300">신뢰도: {analysis.confidence}%</span>
                 </div>
               </div>
             </div>
 
             {/* 장단점 분석 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2">
+              <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+                <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
                   <ThumbsUp className="w-5 h-5" />
                   장점
                 </h3>
                 <div className="space-y-2">
                   {analysis.pros.map((pro, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-gray-700">{pro}</span>
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span className="text-sm text-gray-300">{pro}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-orange-700 mb-4 flex items-center gap-2">
+              <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+                <h3 className="text-lg font-bold text-orange-400 mb-4 flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5" />
                   고려사항
                 </h3>
@@ -414,13 +414,13 @@ export function EnhancedAnalysisDashboard({
                       <div className="w-4 h-4 border-2 border-orange-400 rounded-full flex items-center justify-center">
                         <div className="w-1 h-1 bg-orange-400 rounded-full"></div>
                       </div>
-                      <span className="text-sm text-gray-700">{con}</span>
+                      <span className="text-sm text-gray-300">{con}</span>
                     </div>
                   ))}
                   {analysis.risk_factors.map((risk, index) => (
                     <div key={`risk-${index}`} className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      <span className="text-sm text-gray-700">{risk}</span>
+                      <AlertTriangle className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm text-gray-300">{risk}</span>
                     </div>
                   ))}
                 </div>
@@ -431,38 +431,38 @@ export function EnhancedAnalysisDashboard({
           {/* 오른쪽: 사용자 분석 & 피드백 */}
           <div className="space-y-6">
             {/* 당신의 선택 패턴 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">👤 당신의 선택 패턴</h3>
+            <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+              <h3 className="text-lg font-bold text-white mb-4">👤 당신의 선택 패턴</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">선택한 차량</span>
-                  <span className="font-semibold text-blue-600">{feedbackSummary.like || 0}개</span>
+                  <span className="text-sm text-gray-400">선택한 차량</span>
+                  <span className="font-semibold text-green-400">{feedbackSummary.like || 0}개</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">관심 없는 차량</span>
-                  <span className="font-semibold text-red-600">{feedbackSummary.dislike || 0}개</span>
+                  <span className="text-sm text-gray-400">관심 없는 차량</span>
+                  <span className="font-semibold text-red-400">{feedbackSummary.dislike || 0}개</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">가격 부담</span>
-                  <span className="font-semibold text-orange-600">{feedbackSummary.expensive || 0}개</span>
+                  <span className="text-sm text-gray-400">가격 부담</span>
+                  <span className="font-semibold text-orange-400">{feedbackSummary.expensive || 0}개</span>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <h4 className="font-semibold text-gray-900 mb-3">분석된 선호도</h4>
+              <div className="mt-6 pt-4 border-t border-gray-600">
+                <h4 className="font-semibold text-white mb-3">분석된 선호도</h4>
                 <div className="space-y-2">
                   {analysis.userPreferences.pricesensitive && (
-                    <div className="bg-yellow-50 text-yellow-700 px-3 py-2 rounded-lg text-sm">
+                    <div className="bg-yellow-500/20 text-yellow-400 px-3 py-2 rounded-lg text-sm border border-yellow-500/30">
                       💰 가격 민감형
                     </div>
                   )}
                   {analysis.userPreferences.safety_focused && (
-                    <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm">
+                    <div className="bg-blue-500/20 text-blue-400 px-3 py-2 rounded-lg text-sm border border-blue-500/30">
                       🛡️ 안전 중시형
                     </div>
                   )}
                   {analysis.userPreferences.fuel_efficiency_focused && (
-                    <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm">
+                    <div className="bg-green-500/20 text-green-400 px-3 py-2 rounded-lg text-sm border border-green-500/30">
                       ⚡ 연비 중시형
                     </div>
                   )}
@@ -471,16 +471,16 @@ export function EnhancedAnalysisDashboard({
             </div>
 
             {/* 추가 정보 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">📋 추가 정보</h3>
+            <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+              <h3 className="text-lg font-bold text-white mb-4">📋 추가 정보</h3>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">주요 특징</h4>
+                  <h4 className="font-semibold text-gray-300 mb-2">주요 특징</h4>
                   <div className="flex flex-wrap gap-2">
                     {currentVehicle.features.slice(0, 4).map((feature, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                        className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600"
                       >
                         {feature}
                       </span>
@@ -489,11 +489,11 @@ export function EnhancedAnalysisDashboard({
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">예상 유지비 (월)</h4>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <h4 className="font-semibold text-gray-300 mb-2">예상 유지비 (월)</h4>
+                  <div className="text-2xl font-bold text-white">
                     {Math.round(currentVehicle.price * 0.03).toLocaleString()}원
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">보험료, 유지보수비 포함 추정</p>
+                  <p className="text-xs text-gray-400 mt-1">보험료, 유지보수비 포함 추정</p>
                 </div>
               </div>
             </div>
@@ -505,7 +505,7 @@ export function EnhancedAnalysisDashboard({
           <Button
             onClick={onProceedToFinance}
             size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg"
+            className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white px-8 py-4 text-lg shadow-lg shadow-green-500/25"
           >
             <CheckCircle className="w-5 h-5 mr-2" />
             이 차량으로 진행하기
@@ -516,7 +516,7 @@ export function EnhancedAnalysisDashboard({
             onClick={onSelectDifferentVehicle}
             variant="outline"
             size="lg"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg"
+            className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white px-8 py-4 text-lg bg-transparent"
           >
             다른 차량 보기
           </Button>
@@ -524,11 +524,11 @@ export function EnhancedAnalysisDashboard({
 
         {/* 상세 설명 섹션 */}
         {currentVehicle.description && (
-          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">📝 차량 상세 분석</h3>
+          <div className="mt-8 bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 backdrop-blur-sm">
+            <h3 className="text-lg font-bold text-white mb-4">📝 차량 상세 분석</h3>
             <div className="relative">
               <p
-                className="text-gray-700 leading-relaxed"
+                className="text-gray-300 leading-relaxed"
                 style={{
                   display: showFullDescription ? 'block' : '-webkit-box',
                   WebkitLineClamp: showFullDescription ? 'none' : 3,
@@ -541,7 +541,7 @@ export function EnhancedAnalysisDashboard({
               {currentVehicle.description.length > 100 && (
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
-                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                  className="mt-2 text-green-400 hover:text-green-300 text-sm font-medium flex items-center gap-1 transition-colors"
                 >
                   {showFullDescription ? (
                     <>
@@ -561,12 +561,12 @@ export function EnhancedAnalysisDashboard({
         )}
 
         {/* 주의사항 */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="mt-8 bg-green-500/10 border border-green-500/30 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-blue-600 mt-0.5" />
+            <Clock className="w-5 h-5 text-green-400 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-blue-900 mb-1">개인화 분석 안내</h4>
-              <p className="text-sm text-blue-700">
+              <h4 className="font-semibold text-green-300 mb-1">개인화 분석 안내</h4>
+              <p className="text-sm text-green-400">
                 이 분석은 당신의 선택 패턴을 학습하여 생성된 개인화 정보입니다.
                 실제 차량 상태는 직접 확인하시고, 전문가의 검수를 받으시기 바랍니다.
               </p>

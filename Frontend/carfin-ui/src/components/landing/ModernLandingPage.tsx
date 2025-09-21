@@ -48,7 +48,7 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
     {
       icon: <TrendingUp className="w-8 h-8" />,
       title: "최저 금리 보장",
-      description: "4대 전문 AI가 협업하여 시중 최저 금리와 최적 금융 상품을 찾아드려요",
+      description: "3개 전문 AI 에이전트가 협업하여 시중 최저 금리와 최적 금융 상품을 찾아드려요",
       color: "from-purple-500 to-pink-600"
     },
     {
@@ -98,19 +98,19 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50">
+      <nav className="fixed top-0 w-full bg-black/95 backdrop-blur-md border-b border-gray-800 z-50">
         <Container>
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
                 <Car className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="text-xl font-bold text-gray-900">CarFin AI</span>
-                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                  Beta
+                <span className="text-xl font-bold text-white">CarFin</span>
+                <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+                  AI
                 </span>
               </div>
             </div>
@@ -119,17 +119,18 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-gray-300 hover:text-white hover:bg-gray-800"
                 aria-label="서비스 소개 페이지로 이동"
               >
                 서비스 소개
               </Button>
               <Button
-                variant="default"
                 size="sm"
                 onClick={onGetStarted}
-                icon={<Sparkles className="w-4 h-4" aria-hidden="true" />}
+                className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white shadow-lg shadow-green-500/25"
                 aria-label="AI 차량 추천 서비스 시작하기"
               >
+                <Sparkles className="w-4 h-4 mr-2" aria-hidden="true" />
                 시작하기
               </Button>
             </div>
@@ -138,21 +139,21 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-800">
         <Container>
           <div className={`text-center max-w-4xl mx-auto transition-all duration-1000 ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}>
 
             {/* Hero Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 px-6 py-3 rounded-full mb-8 border border-purple-200">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 px-6 py-3 rounded-full mb-8 border border-green-500/30">
               <Brain className="w-5 h-5" aria-hidden="true" />
               <span className="text-sm font-bold">🤖 초개인화 AI 매칭 시스템</span>
             </div>
 
             {/* Hero Title */}
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+              <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
                 멀티 에이전트가 협업하는
               </span><br />
               초개인화 중고차 매칭
@@ -160,42 +161,42 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
 
             {/* Hero Description */}
             <div className="space-y-4 mb-8">
-              <p className="text-xl md:text-2xl font-bold text-gray-800 leading-relaxed">
-                🕰️ <span className="text-blue-600">원클릭</span> + 🎯 <span className="text-purple-600">초개인화</span> + 🤖 <span className="text-green-600">멀티 에이전트</span>
+              <p className="text-xl md:text-2xl font-bold text-gray-300 leading-relaxed">
+                🕰️ <span className="text-green-400">원클릭</span> + 🎯 <span className="text-emerald-400">초개인화</span> + 🤖 <span className="text-blue-400">멀티 에이전트</span>
               </p>
-              <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-4xl mx-auto">
-                당신의 라이프스타일, 예산, 선호도를 학습한 3대 AI 전문가가<br/>
-                수만 대 매물 중에서 <strong className="text-gray-800">당신만을 위한 딱 그 차</strong>를 원클릭으로 찾아드립니다
+              <p className="text-lg md:text-xl text-gray-400 leading-relaxed max-w-4xl mx-auto">
+                당신의 라이프스타일, 예산, 선호도를 학습한 3개 전문 AI 에이전트가<br/>
+                수만 대 매물 중에서 <strong className="text-white">당신만을 위한 딱 그 차</strong>를 원클릭으로 찾아드립니다
               </p>
             </div>
 
             {/* AI Process Preview */}
-            <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-2xl p-8 mb-12 max-w-5xl mx-auto border border-purple-100">
+            <div className="bg-gradient-to-r from-gray-800/50 via-gray-700/50 to-gray-800/50 rounded-2xl p-8 mb-12 max-w-5xl mx-auto border border-gray-700">
               <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">🚀 왜 CarFin AI인가?</h3>
-                <p className="text-sm text-gray-600">기존 중고차 사이트와는 완전히 다른 경험</p>
+                <h3 className="text-lg font-bold text-white mb-2">🚀 왜 CarFin인가?</h3>
+                <p className="text-sm text-gray-400">기존 중고차 사이트와는 완전히 다른 경험</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Brain className="w-8 h-8 text-white" />
                   </div>
-                  <div className="font-bold text-lg text-gray-800">초개인화 학습</div>
-                  <div className="text-sm text-gray-600 mt-2">당신의 라이프스타일을 학습한 AI가<br/>딱 맞는 차량만 선별</div>
+                  <div className="font-bold text-lg text-white">초개인화 학습</div>
+                  <div className="text-sm text-gray-400 mt-2">당신의 라이프스타일을 학습한 AI가<br/>딱 맞는 차량만 선별</div>
                 </div>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Zap className="w-8 h-8 text-white" />
                   </div>
-                  <div className="font-bold text-lg text-gray-800">원클릭 매칭</div>
-                  <div className="text-sm text-gray-600 mt-2">복잡한 비교쇼핑 없이<br/>바로 최적 매물 + 금융상품 제안</div>
+                  <div className="font-bold text-lg text-white">원클릭 매칭</div>
+                  <div className="text-sm text-gray-400 mt-2">복잡한 비교쇼핑 없이<br/>바로 최적 매물 + 금융상품 제안</div>
                 </div>
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Users className="w-8 h-8 text-white" />
                   </div>
-                  <div className="font-bold text-lg text-gray-800">3대 AI 협업</div>
-                  <div className="text-sm text-gray-600 mt-2">정보수집 + 차량전문가 + 금융전문가<br/>동시 협업으로 완벽 분석</div>
+                  <div className="font-bold text-lg text-white">3개 전문 AI 에이전트 협업</div>
+                  <div className="text-sm text-gray-400 mt-2">정보수집 + 차량전문가 + 금융전문가<br/>동시 협업으로 완벽 분석</div>
                 </div>
               </div>
             </div>
@@ -204,23 +205,22 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
             {/* Hero CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
               <Button
-                variant="default"
                 size="lg"
                 onClick={onGetStarted}
-                icon={<Sparkles className="w-5 h-5" aria-hidden="true" />}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white shadow-xl transform hover:scale-105 transition-all duration-200"
                 aria-label="AI 원클릭 매칭 체험하기"
               >
+                <Sparkles className="w-5 h-5 mr-2" aria-hidden="true" />
                 🎆 원클릭 매칭 체험하기
               </Button>
 
               <Button
                 variant="outline"
                 size="lg"
-                icon={<Play className="w-6 h-6" aria-hidden="true" />}
-                className="border-2 border-gray-300 hover:border-purple-500 hover:text-purple-600"
+                className="border-2 border-gray-600 text-gray-300 hover:border-green-500 hover:text-green-400 bg-transparent"
                 aria-label="서비스 데모 비디오 재생하기"
               >
+                <Play className="w-6 h-6 mr-2" aria-hidden="true" />
                 데모 보기 (2분)
               </Button>
             </div>
@@ -230,16 +230,16 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center transition-all duration-500 ${
+                  className={`bg-gray-800/50 rounded-2xl p-6 shadow-sm border border-gray-700 text-center transition-all duration-500 backdrop-blur-sm ${
                     isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                   }`}
                   style={{ transitionDelay: `${index * 150}ms` }}
                 >
-                  <div className="flex items-center justify-center gap-2 text-blue-600 mb-2">
+                  <div className="flex items-center justify-center gap-2 text-green-400 mb-2">
                     {stat.icon}
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">{stat.number}</div>
-                  <div className="text-sm text-gray-600">{stat.label}</div>
+                  <div className="text-2xl font-bold text-white mb-1">{stat.number}</div>
+                  <div className="text-sm text-gray-400">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -248,18 +248,18 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
 
         {/* Scroll Indicator */}
         <div className="text-center mt-16">
-          <ChevronDown className="w-6 h-6 text-gray-400 mx-auto animate-bounce" />
+          <ChevronDown className="w-6 h-6 text-gray-500 mx-auto animate-bounce" />
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-gradient-to-br from-gray-800 to-gray-900">
         <Container>
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               당신을 위한 특별한 경험
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
               복잡한 중고차 구매 과정을 간단하고 투명하게 만들어, 당신에게 완벽한 차량을 찾아드립니다.
             </p>
           </div>
@@ -268,13 +268,13 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300 group"
+                className="bg-gradient-to-br from-gray-800/50 to-gray-700/50 rounded-3xl p-8 border border-gray-600 hover:shadow-2xl transition-all duration-300 group backdrop-blur-sm"
               >
                 <div className={`w-16 h-16 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">{feature.title}</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">{feature.description}</p>
+                <h3 className="text-2xl font-bold text-white mb-4">{feature.title}</h3>
+                <p className="text-gray-400 text-lg leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -286,7 +286,7 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
         <Container>
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              🤖 4대 전문 AI가 협업하는 이유
+              🤖 3개 전문 AI 에이전트가 협업하는 이유
             </h2>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto">
               각각의 전문 영역에서 최고 성능을 발휘하는 Gemini AI 에이전트들이<br/>
@@ -385,13 +385,13 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
       </section>
 
       {/* Process Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-50 to-blue-50">
+      <section className="py-24 bg-gradient-to-br from-black to-gray-900">
         <Container>
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               간단한 4단계 프로세스
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-gray-400">
               대화만으로 시작해서 최적의 차량과 금융상품까지 한 번에 해결합니다
             </p>
           </div>
@@ -401,24 +401,24 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
               <div key={index} className="text-center group">
                 {/* Step Number */}
                 <div className="relative mb-6">
-                  <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center mx-auto border-4 border-gray-100 group-hover:border-blue-200 transition-all duration-300">
+                  <div className="w-20 h-20 bg-gray-800 rounded-full shadow-lg flex items-center justify-center mx-auto border-4 border-gray-700 group-hover:border-green-500 transition-all duration-300">
                     <span className="text-2xl font-bold text-gray-400">{step.number}</span>
                   </div>
-                  <div className={`absolute inset-0 w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-300 mx-auto`} />
+                  <div className={`absolute inset-0 w-20 h-20 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-300 mx-auto`} />
                 </div>
 
                 {/* Step Icon */}
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 ${step.color} bg-white shadow-sm`}>
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 ${step.color} bg-gray-800 shadow-sm border border-gray-700`}>
                   {step.icon}
                 </div>
 
                 {/* Step Content */}
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-600">{step.description}</p>
+                <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
+                <p className="text-gray-400">{step.description}</p>
 
                 {/* Connection Line */}
                 {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-10 left-1/2 w-full h-px bg-gradient-to-r from-gray-200 to-transparent transform translate-x-10" />
+                  <div className="hidden lg:block absolute top-10 left-1/2 w-full h-px bg-gradient-to-r from-gray-600 to-transparent transform translate-x-10" />
                 )}
               </div>
             ))}
@@ -427,26 +427,25 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-700 text-white">
+      <section className="py-24 bg-gradient-to-r from-green-600 to-emerald-700 text-white">
         <Container>
           <div className="text-center max-w-4xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
               이제 당신 차례예요
             </h2>
             <p className="text-xl mb-12 opacity-90">
-              벌써 15만 명이 CarFin AI와 함께 딱 맞는 차량을 찾았어요.<br />
+              벌써 15만 명이 CarFin과 함께 딱 맞는 차량을 찾았어요.<br />
               다음은 당신 차례입니다. 지금 바로 시작해보세요!
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
-                variant="secondary"
                 size="lg"
                 onClick={onGetStarted}
-                icon={<Sparkles className="w-6 h-6" aria-hidden="true" />}
-                className="bg-white text-blue-700 hover:bg-gray-50 shadow-xl"
+                className="bg-white text-green-700 hover:bg-gray-50 shadow-xl font-semibold"
                 aria-label="무료로 AI 차량 추천 서비스 시작하기"
               >
+                <Sparkles className="w-6 h-6 mr-2" aria-hidden="true" />
                 무료로 시작하기
               </Button>
 
@@ -464,14 +463,14 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-gray-900 text-white">
+      <footer className="py-12 bg-black text-white">
         <Container>
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-3 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-lg flex items-center justify-center">
                 <Car className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-semibold">CarFin AI</span>
+              <span className="text-lg font-semibold">CarFin</span>
             </div>
 
             <div className="text-center md:text-right">
@@ -479,7 +478,7 @@ export function ModernLandingPage({ onGetStarted }: ModernLandingPageProps) {
                 AI 기반 중고차 추천 플랫폼
               </p>
               <p className="text-gray-500 text-xs">
-                © 2025 CarFin AI. All rights reserved.
+                © 2025 CarFin. All rights reserved.
               </p>
             </div>
           </div>

@@ -125,3 +125,11 @@ carfin_*.log
 mcp_*.log
 feedback.db
 user_sessions.db
+mcp_response.json
+mcp_*.json
+
+# Windows command temporary files
+nul
+CON
+PRN
+AUX

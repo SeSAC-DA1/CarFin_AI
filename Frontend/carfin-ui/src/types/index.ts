@@ -237,6 +237,7 @@ export interface Vehicle {
   match_score: number;
   description: string;
   highlight?: string;
+  detail_url?: string; // 엔카 상세보기 URL
 }
 
 // 차량 피드백 타입

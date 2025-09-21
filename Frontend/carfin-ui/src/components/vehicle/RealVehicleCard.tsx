@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState, memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { VehicleImage } from '@/components/ui/optimized-image';
+import { useMobile, useTouchGesture } from '@/hooks/use-mobile';
 import {
   Heart,
   Car,
@@ -44,36 +45,17 @@ interface RealVehicleCardProps {
   showMatchScore?: boolean;
 }
 
-export function RealVehicleCard({
+const RealVehicleCard = memo(function RealVehicleCard({
   vehicle,
   onVehicleSelect,
   onRequestFinancing,
   isSelected = false,
   showMatchScore = true
 }: RealVehicleCardProps) {
-  const [imageError, setImageError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-
-  // 이미지 URL 처리
-  const getImageUrl = () => {
-    if (vehicle.photo && !imageError) {
-      return vehicle.photo;
-    }
-
-    // 폴백 이미지 - Unsplash에서 차량 관련 이미지
-    const fallbackImages = [
-      'https://images.unsplash.com/photo-1494976688016-a3dc3d0b10e5?w=400&h=300&fit=crop&auto=format&q=80', // 흰색 세단
-      'https://images.unsplash.com/photo-1549924231-f129b911e442?w=400&h=300&fit=crop&auto=format&q=80', // 현대 소나타
-      'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop&auto=format&q=80', // 기아 차량
-      'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=300&fit=crop&auto=format&q=80', // BMW
-      'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=300&fit=crop&auto=format&q=80', // 테슬라
-      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=300&fit=crop&auto=format&q=80', // SUV
-    ];
-
-    // 차량 ID를 기반으로 일관성 있는 이미지 선택
-    const hash = vehicle.vehicleid.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return fallbackImages[hash % fallbackImages.length];
-  };
+  const [isPressed, setIsPressed] = useState(false);
+  const { isMobile, touchSupported } = useMobile();
+  const { touchState, touchHandlers } = useTouchGesture();
 
   // 가격 포맷팅
   const formatPrice = (price: number) => {
@@ -106,42 +88,84 @@ export function RealVehicleCard({
     return 'bg-gray-500';
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = useCallback(() => {
     if (onVehicleSelect) {
       onVehicleSelect(vehicle.vehicleid);
     }
-  };
+  }, [onVehicleSelect, vehicle.vehicleid]);
 
-  const handleLikeClick = (e: React.MouseEvent) => {
+  const handleLikeClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     setIsLiked(!isLiked);
-  };
 
-  const handleFinanceClick = (e: React.MouseEvent) => {
+    // 햅틱 피드백 (모바일)
+    if (touchSupported && 'vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+  }, [isLiked, touchSupported]);
+
+  const handleFinanceClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (onRequestFinancing) {
       onRequestFinancing(vehicle.vehicleid);
     }
-  };
+  }, [onRequestFinancing, vehicle.vehicleid]);
+
+  // 터치 이벤트 처리
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setIsPressed(true);
+    touchHandlers.onTouchStart(e);
+  }, [touchHandlers]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    setIsPressed(false);
+    touchHandlers.onTouchEnd();
+
+    // 스와이프 제스처가 아닌 경우에만 클릭 처리
+    if (Math.abs(touchState.deltaX) < 10 && Math.abs(touchState.deltaY) < 10) {
+      handleCardClick();
+    }
+  }, [touchHandlers, touchState, handleCardClick]);
+
+  const handleMouseDown = useCallback(() => {
+    if (!touchSupported) setIsPressed(true);
+  }, [touchSupported]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!touchSupported) setIsPressed(false);
+  }, [touchSupported]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsPressed(false);
+  }, []);
 
   return (
     <div
       className={`
-        group relative bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden
+        group relative bg-white rounded-xl shadow-md transition-all duration-300 cursor-pointer overflow-hidden
         ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-        hover:scale-[1.02] transform
+        ${isPressed ? 'scale-[0.98] shadow-lg' : 'hover:shadow-xl hover:scale-[1.02]'}
+        ${isMobile ? 'active:scale-[0.98]' : ''}
+        transform select-none
       `}
-      onClick={handleCardClick}
+      onClick={!touchSupported ? handleCardClick : undefined}
+      onTouchStart={touchSupported ? handleTouchStart : undefined}
+      onTouchEnd={touchSupported ? handleTouchEnd : undefined}
+      onTouchMove={touchSupported ? touchHandlers.onTouchMove : undefined}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       {/* 이미지 섹션 */}
       <div className="relative h-48 bg-gray-100 overflow-hidden">
-        <Image
-          src={getImageUrl()}
-          alt={`${vehicle.manufacturer} ${vehicle.model}`}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-110"
-          onError={() => setImageError(true)}
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        <VehicleImage
+          vehicleId={vehicle.vehicleid}
+          src={vehicle.photo}
+          manufacturer={vehicle.manufacturer}
+          model={vehicle.model}
+          vehicleType={vehicle.cartype}
+          className="h-full transition-transform duration-300 group-hover:scale-110"
+          priority={false}
         />
 
         {/* 오버레이 액션 버튼들 */}
@@ -165,12 +189,15 @@ export function RealVehicleCard({
         <div className="absolute top-3 right-3 flex gap-2">
           <button
             onClick={handleLikeClick}
+            onTouchEnd={handleLikeClick}
             className={`
               p-2 rounded-full transition-all duration-200 backdrop-blur-sm
+              ${isMobile ? 'p-3' : 'p-2'} ${/* 모바일에서 터치 영역 확대 */}
               ${isLiked ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'}
+              active:scale-90 transform
             `}
           >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+            <Heart className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} ${isLiked ? 'fill-current' : ''}`} />
           </button>
         </div>
 
@@ -238,39 +265,64 @@ export function RealVehicleCard({
         )}
 
         {/* 액션 버튼들 */}
-        <div className="flex gap-2 pt-2">
+        <div className={`flex gap-2 pt-2 ${isMobile ? 'flex-col space-y-2' : ''}`}>
           <Button
             onClick={handleFinanceClick}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            size="sm"
+            onTouchEnd={handleFinanceClick}
+            className={`
+              ${isMobile ? 'w-full' : 'flex-1'}
+              bg-blue-600 hover:bg-blue-700 text-white
+              ${isMobile ? 'h-12 text-base' : 'h-9 text-sm'}
+              active:scale-95 transform transition-transform
+            `}
+            size={isMobile ? 'default' : 'sm'}
           >
-            <MessageCircle className="w-4 h-4 mr-2" />
+            <MessageCircle className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} mr-2`} />
             금융상담
           </Button>
 
-          {vehicle.detailurl && (
+          <div className={`flex gap-2 ${isMobile ? 'justify-center' : ''}`}>
+            {vehicle.detailurl && (
+              <Button
+                variant="outline"
+                size={isMobile ? 'default' : 'sm'}
+                className={`
+                  ${isMobile ? 'flex-1 h-12' : 'h-9'}
+                  active:scale-95 transform transition-transform
+                `}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(vehicle.detailurl, '_blank');
+                }}
+              >
+                <ExternalLink className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
+                {isMobile && <span className="ml-2">상세보기</span>}
+              </Button>
+            )}
+
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? 'default' : 'sm'}
+              className={`
+                ${isMobile ? 'flex-1 h-12' : 'h-9'}
+                active:scale-95 transform transition-transform
+              `}
               onClick={(e) => {
                 e.stopPropagation();
-                window.open(vehicle.detailurl, '_blank');
+                // 공유 기능 구현
+                if (navigator.share && isMobile) {
+                  navigator.share({
+                    title: `${vehicle.manufacturer} ${vehicle.model}`,
+                    text: `${vehicle.modelyear}년 ${vehicle.manufacturer} ${vehicle.model} - ${formatPrice(vehicle.price)}`,
+                    url: vehicle.detailurl || window.location.href,
+                  });
+                }
               }}
             >
-              <ExternalLink className="w-4 h-4" />
+              <Share2 className={isMobile ? 'w-5 h-5' : 'w-4 h-4'} />
+              {isMobile && <span className="ml-2">공유</span>}
             </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              // 공유 기능 구현
-            }}
-          >
-            <Share2 className="w-4 h-4" />
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -284,4 +336,6 @@ export function RealVehicleCard({
       )}
     </div>
   );
-}
+});
+
+export { RealVehicleCard };

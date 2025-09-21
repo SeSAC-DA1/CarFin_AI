@@ -22,7 +22,8 @@ import {
   CheckCircle,
   Eye,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  ExternalLink
 } from 'lucide-react';
 import {
   Vehicle,
@@ -31,6 +32,8 @@ import {
 } from '@/types';
 import { transformMultipleVehicles, recalculateMatchScore } from '@/lib/vehicle-utils';
 import { RealVehicleData } from '@/app/api/vehicles/route';
+import { VehicleImage } from '@/components/ui/optimized-image';
+import { usePersonalizedLearning } from '@/hooks/usePersonalizedLearning';
 
 export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVehicleGridProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -39,6 +42,15 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
   const [showIntro, setShowIntro] = useState(true);
   const [currentPhase, setCurrentPhase] = useState<'selection' | 'completed'>('selection');
   const [error, setError] = useState<string | null>(null);
+
+  // 🧠 AI 실시간 학습 시스템
+  const {
+    updatePreferences,
+    calculatePersonalizedScore,
+    trackInteraction,
+    getLearningInsights,
+    metrics
+  } = usePersonalizedLearning(userProfile?.user_id || 'guest');
 
   useEffect(() => {
     loadVehicles();
@@ -131,7 +143,23 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
         }))
       });
 
-      setVehicles(transformedVehicles);
+      // 🧠 AI 개인화 점수 적용
+      const personalizedVehicles = transformedVehicles.map(vehicle => ({
+        ...vehicle,
+        match_score: calculatePersonalizedScore(vehicle),
+        original_score: vehicle.match_score
+      }));
+
+      // 개인화 점수순으로 정렬
+      personalizedVehicles.sort((a, b) => b.match_score - a.match_score);
+
+      console.log('🧠 AI 개인화 적용 완료:', {
+        originalAvgScore: transformedVehicles.reduce((sum, v) => sum + v.match_score, 0) / transformedVehicles.length,
+        personalizedAvgScore: personalizedVehicles.reduce((sum, v) => sum + v.match_score, 0) / personalizedVehicles.length,
+        learningMetrics: metrics
+      });
+
+      setVehicles(personalizedVehicles);
 
     } catch (error) {
       console.error('❌ 차량 데이터 로딩 오류:', error);
@@ -146,10 +174,54 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
 
 
   const handleVehicleFeedback = (vehicleId: string, feedbackType: VehicleFeedback['feedbackType']) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return;
+
     setVehicleFeedbacks(prev => ({
       ...prev,
       [vehicleId]: feedbackType
     }));
+
+    // 🧠 AI 학습 업데이트
+    updatePreferences(vehicle, feedbackType);
+
+    // 📊 인터랙션 추적
+    trackInteraction({
+      userId: userProfile?.user_id || 'guest',
+      sessionId: 'current_session',
+      type: 'explicit',
+      action: `feedback_${feedbackType}`,
+      target: {
+        type: 'car_card',
+        carId: vehicleId,
+        position: vehicles.findIndex(v => v.id === vehicleId)
+      },
+      value: {
+        'love': 1,
+        'like': 0.6,
+        'maybe': 0.2,
+        'dislike': -0.6,
+        'expensive': -0.3
+      }[feedbackType] || 0
+    });
+
+    console.log('🎯 차량 피드백 & AI 학습:', {
+      vehicleId,
+      feedbackType,
+      vehicle: `${vehicle.brand} ${vehicle.model}`,
+      newScore: calculatePersonalizedScore(vehicle)
+    });
+
+    // 실시간 점수 재계산 및 재정렬
+    setTimeout(() => {
+      setVehicles(prev => {
+        const updated = prev.map(v => v.id === vehicleId ? {
+          ...v,
+          match_score: calculatePersonalizedScore(v)
+        } : v);
+        return updated.sort((a, b) => b.match_score - a.match_score);
+      });
+    }, 500);
   };
 
   const getSelectedCount = () => {
@@ -203,12 +275,25 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
                 <Heart className="w-10 h-10 text-white" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-                마음에 드는 차량을 골라보세요
+                AI가 학습하며 추천하는 차량들
               </h1>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                여러 차량을 한눈에 보면서 취향에 맞는 차량들을 선택해주세요.<br/>
-                각 차량 카드 아래 버튼으로 선호도를 표시할 수 있어요.
+                여러분의 선호도를 실시간으로 학습해서 더 정확한 추천을 해드립니다.<br/>
+                각 차량에 대한 피드백을 주시면 AI가 학습해서 더 나은 추천을 제공합니다.
               </p>
+
+              {/* AI 학습 상태 표시 */}
+              <div className="flex justify-center gap-4 text-sm">
+                <div className="bg-blue-50 px-4 py-2 rounded-full">
+                  <span className="text-blue-600 font-medium">정확도: {Math.round(metrics.accuracy * 100)}%</span>
+                </div>
+                <div className="bg-green-50 px-4 py-2 rounded-full">
+                  <span className="text-green-600 font-medium">신뢰도: {Math.round(metrics.confidence * 100)}%</span>
+                </div>
+                <div className="bg-purple-50 px-4 py-2 rounded-full">
+                  <span className="text-purple-600 font-medium">학습 품질: {Math.round(metrics.sessionQuality * 100)}%</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
@@ -250,10 +335,10 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
               size="lg"
               onClick={() => setShowIntro(false)}
               icon={<Sparkles className="w-6 h-6" aria-hidden="true" />}
-              className="shadow-xl shadow-purple-200"
-              aria-label="차량 선택 과정 시작하기"
+              className="shadow-xl shadow-purple-200 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              aria-label="AI 맞춤 추천 시작하기"
             >
-              차량 선택 시작하기
+              AI 맞춤 추천 시작하기
             </Button>
           </div>
         </Container>
@@ -268,7 +353,7 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <X className="w-8 h-8 text-red-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">차량 데이터 로딩 오류</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">AI 추천 시스템 오류</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button
             onClick={() => {
@@ -291,8 +376,8 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Car className="w-8 h-8 text-blue-600 animate-pulse" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">실제 차량 데이터를 불러오고 있어요</h2>
-          <p className="text-gray-600">PostgreSQL에서 85,320개 차량 중 맞춤 추천을 준비중입니다...</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">AI가 맞춤 추천을 준비중입니다</h2>
+          <p className="text-gray-600">85,320개 실제 매물 중에서 개인화된 추천을 분석하고 있습니다...</p>
         </div>
       </div>
     );
@@ -364,29 +449,33 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
       {/* 메인 콘텐츠 - 개선된 그리드 레이아웃 */}
       <Container>
         <div className="py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="space-y-6 max-w-6xl mx-auto">
             {vehicles.map((vehicle) => {
               const feedback = vehicleFeedbacks[vehicle.id];
 
               return (
                 <div
                   key={vehicle.id}
-                  className={`bg-white rounded-3xl shadow-lg overflow-hidden transition-all duration-300 border-2 ${getFeedbackColor(feedback)} hover:shadow-xl hover:scale-105`}
+                  className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden relative group border ${getFeedbackColor(feedback)} hover:border-gray-200`}
                 >
-                  {/* 하이라이트 배지 */}
-                  {vehicle.highlight && (
-                    <div className="absolute top-4 left-4 z-10">
-                      <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                        {vehicle.highlight}
-                      </div>
-                    </div>
-                  )}
+                  {/* 가로형 레이아웃 */}
+                  <div className="flex">
+                    {/* 차량 이미지 섹션 */}
+                    <div className="w-80 flex-shrink-0 relative">
+                      {/* 하이라이트 배지 */}
+                      {vehicle.highlight && (
+                        <div className="absolute top-4 left-4 z-10">
+                          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                            {vehicle.highlight}
+                          </div>
+                        </div>
+                      )}
 
                   {/* 매치 점수 */}
                   <div className="absolute top-4 right-4 z-10">
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
                       <TrendingUp className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-bold text-green-600">{vehicle.match_score}%</span>
+                      <span className="text-sm font-bold text-purple-600">AI {vehicle.match_score}%</span>
                     </div>
                   </div>
 
@@ -399,115 +488,181 @@ export function ModernVehicleGrid({ userProfile, onSelectionComplete }: ModernVe
                     </div>
                   )}
 
-                  {/* 차량 이미지 */}
-                  <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
-                    <Car className="w-16 h-16 text-gray-400" />
-                  </div>
-
-                  {/* 차량 정보 */}
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">
-                          {vehicle.brand} {vehicle.model}
-                        </h3>
-                        <p className="text-sm text-gray-600">{vehicle.year}년 • {vehicle.location}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold text-blue-600 mb-1">
-                          {vehicle.price.toLocaleString()}만원
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Star className="w-3 h-3 text-yellow-500" />
-                          <span>{vehicle.safety_rating}.0</span>
-                        </div>
+                      <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                        <VehicleImage
+                          vehicleId={vehicle.id}
+                          src={vehicle.images}
+                          manufacturer={vehicle.brand}
+                          model={vehicle.model}
+                          vehicleType={vehicle.body_type}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          priority={false}
+                          enableGallery={true}
+                          autoPlay={false}
+                          showThumbnails={true}
+                          quality={95}
+                        />
+                        {/* 이미지 오버레이 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
                     </div>
 
-                    {/* 핵심 스펙 */}
-                    <div className="grid grid-cols-3 gap-3 mb-4 text-xs">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Fuel className="w-3 h-3" />
-                        <span>{vehicle.fuel_type}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <MapPin className="w-3 h-3" />
-                        <span>{(vehicle.mileage / 10000).toFixed(1)}만km</span>
-                      </div>
-                      {vehicle.fuel_efficiency > 0 && (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <Zap className="w-3 h-3" />
-                          <span>{vehicle.fuel_efficiency}km/L</span>
+                    {/* 차량 정보 섹션 */}
+                    <div className="flex-1 p-6">
+                      {/* 헤더 섹션 */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {vehicle.brand} {vehicle.model}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {vehicle.year}년
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {vehicle.location}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-yellow-500" />
+                              {vehicle.safety_rating}.0점
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                            {vehicle.price.toLocaleString()}만원
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            AI 추천 {vehicle.match_score}%
+                          </div>
+                        </div>
+                      </div>
 
-                    {/* 주요 특징 태그 */}
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {vehicle.features.slice(0, 3).map((feature, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg font-medium"
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
+                      {/* 핵심 스펙 */}
+                      <div className="grid grid-cols-4 gap-4 mb-4">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Fuel className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs font-medium text-gray-500">연료</span>
+                          </div>
+                          <div className="text-sm font-semibold text-gray-900">{vehicle.fuel_type}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <TrendingUp className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs font-medium text-gray-500">주행거리</span>
+                          </div>
+                          <div className="text-sm font-semibold text-gray-900">{(vehicle.mileage / 10000).toFixed(1)}만km</div>
+                        </div>
+                        {vehicle.fuel_efficiency > 0 && (
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Zap className="w-4 h-4 text-green-500" />
+                              <span className="text-xs font-medium text-green-600">연비</span>
+                            </div>
+                            <div className="text-sm font-semibold text-green-700">{vehicle.fuel_efficiency}km/L</div>
+                          </div>
+                        )}
+                        <div className="bg-blue-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Car className="w-4 h-4 text-blue-500" />
+                            <span className="text-xs font-medium text-blue-600">차종</span>
+                          </div>
+                          <div className="text-sm font-semibold text-blue-700">{vehicle.body_type}</div>
+                        </div>
+                      </div>
 
-                    {/* 상세 설명 */}
-                    <p className="text-sm text-gray-700 mb-4 line-clamp-3 leading-relaxed">
-                      {vehicle.description}
-                    </p>
+                      {/* 주요 특징 태그 */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {vehicle.features.slice(0, 4).map((feature, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-sm rounded-full font-medium border border-blue-100"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
 
-                    {/* 액션 버튼들 */}
-                    <div className="grid grid-cols-4 gap-2">
-                      <button
-                        onClick={() => handleVehicleFeedback(vehicle.id, 'dislike')}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                          feedback === 'dislike'
-                            ? 'border-gray-400 bg-gray-100'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                        title="별로예요"
-                      >
-                        <ThumbsDown className="w-4 h-4 text-gray-500 mx-auto" />
-                      </button>
+                      {/* 상세 설명 */}
+                      <p className="text-sm text-gray-700 mb-6 leading-relaxed">
+                        {vehicle.description}
+                      </p>
 
-                      <button
-                        onClick={() => handleVehicleFeedback(vehicle.id, 'expensive')}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                          feedback === 'expensive'
-                            ? 'border-orange-400 bg-orange-100'
-                            : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
-                        }`}
-                        title="비싸요"
-                      >
-                        <DollarSign className="w-4 h-4 text-orange-500 mx-auto" />
-                      </button>
+                      {/* 하단 액션 영역 */}
+                      <div className="flex items-center justify-between">
+                        {/* 엔카 매물 링크 버튼 */}
+                        {vehicle.detail_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(vehicle.detail_url, '_blank');
+                            }}
+                            className="flex-1 mr-4 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 font-medium"
+                            icon={<ExternalLink className="w-4 h-4" />}
+                          >
+                            엔카에서 상세보기
+                          </Button>
+                        )}
 
-                      <button
-                        onClick={() => handleVehicleFeedback(vehicle.id, 'like')}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                          feedback === 'like'
-                            ? 'border-blue-400 bg-blue-100'
-                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                        title="괜찮아요"
-                      >
-                        <ThumbsUp className="w-4 h-4 text-blue-500 mx-auto" />
-                      </button>
+                        {/* 피드백 액션 버튼들 */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleVehicleFeedback(vehicle.id, 'dislike')}
+                            className={`p-2 rounded-lg border transition-all duration-200 ${
+                              feedback === 'dislike'
+                                ? 'border-gray-400 bg-gray-100'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                            title="별로예요"
+                          >
+                            <ThumbsDown className="w-4 h-4 text-gray-500" />
+                          </button>
 
-                      <button
-                        onClick={() => handleVehicleFeedback(vehicle.id, 'love')}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                          feedback === 'love'
-                            ? 'border-red-400 bg-red-100'
-                            : 'border-gray-200 hover:border-red-300 hover:bg-red-50'
-                        }`}
-                        title="정말 좋아요"
-                      >
-                        <Heart className="w-4 h-4 text-red-500 mx-auto" />
-                      </button>
+                          <button
+                            onClick={() => handleVehicleFeedback(vehicle.id, 'expensive')}
+                            className={`p-2 rounded-lg border transition-all duration-200 ${
+                              feedback === 'expensive'
+                                ? 'border-orange-400 bg-orange-100'
+                                : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
+                            }`}
+                            title="비싸요"
+                          >
+                            <DollarSign className="w-4 h-4 text-orange-500" />
+                          </button>
+
+                          <button
+                            onClick={() => handleVehicleFeedback(vehicle.id, 'like')}
+                            className={`p-2 rounded-lg border transition-all duration-200 ${
+                              feedback === 'like'
+                                ? 'border-blue-400 bg-blue-100'
+                                : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                            }`}
+                            title="괜찮아요"
+                          >
+                            <ThumbsUp className="w-4 h-4 text-blue-500" />
+                          </button>
+
+                          <button
+                            onClick={() => handleVehicleFeedback(vehicle.id, 'love')}
+                            className={`p-2 rounded-lg border transition-all duration-200 ${
+                              feedback === 'love'
+                                ? 'border-red-400 bg-red-100'
+                                : 'border-gray-200 hover:border-red-300 hover:bg-red-50'
+                            }`}
+                            title="정말 좋아요"
+                          >
+                            <Heart className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

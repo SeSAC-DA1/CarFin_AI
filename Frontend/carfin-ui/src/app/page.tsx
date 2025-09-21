@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import {
   Car
 } from 'lucide-react';
-import { ModernSignupForm } from '@/components/auth/ModernSignupForm';
+import { SpotifyStyleOnboarding } from '@/components/onboarding/SpotifyStyleOnboarding';
 import { ModernLandingPage } from '@/components/landing/ModernLandingPage';
 import { CoreThreeAgentChat } from '@/components/chat/CoreThreeAgentChat';
-import { ModernVehicleGrid } from '@/components/vehicle/ModernVehicleGrid';
+import { NetflixStyleRecommendation } from '@/components/vehicle/NetflixStyleRecommendation';
 import { EnhancedAnalysisDashboard } from '@/components/analysis/EnhancedAnalysisDashboard';
 import { FinanceConsultation } from '@/components/finance/FinanceConsultation';
 import { ApiHealthCheck } from '@/components/debug/ApiHealthCheck';
@@ -29,9 +29,16 @@ export default function CarFinPage() {
     // Component initialization
   }, []);
 
-  const handleSignupComplete = (profile: UIUserProfile) => {
+  const handleOnboardingComplete = (preferences: any) => {
+    const profile: UIUserProfile = {
+      user_id: `user_${Date.now()}`,
+      name: 'CarFin User',
+      preferences: preferences.brands,
+      guest: false
+    };
     setUserProfile(profile);
-    setCurrentPhase('grid'); // 직접 그리드로 이동
+    setCollectedData(preferences);
+    setCurrentPhase('grid'); // CarFin 메인으로 이동
   };
 
   const handleSkip = () => {
@@ -82,9 +89,9 @@ export default function CarFinPage() {
     );
   }
 
-  // 회원가입 페이지
+  // Spotify 스타일 온보딩
   if (currentPhase === 'signup') {
-    return <ModernSignupForm onSignupComplete={handleSignupComplete} onSkip={handleSkip} />;
+    return <SpotifyStyleOnboarding onComplete={handleOnboardingComplete} />;
   }
 
   // 채팅 단계
@@ -112,14 +119,9 @@ export default function CarFinPage() {
     );
   }
 
-  // 차량 선택 단계
+  // 차량 선택 단계 - 넷플릭스 스타일 추천
   if (currentPhase === 'grid') {
-    return (
-      <ModernVehicleGrid
-        userProfile={{ ...userProfile, ...collectedData }}
-        onSelectionComplete={handleVehicleSelection}
-      />
-    );
+    return <NetflixStyleRecommendation />;
   }
 
   // 분석 대시보드 단계

@@ -80,7 +80,8 @@ export function transformVehicleData(realData: RealVehicleData): Vehicle {
     safety_rating: getSafetyRating(realData.manufacturer),
     match_score: calculateInitialMatchScore(realData),
     description: generateDescription(realData),
-    highlight: generateHighlight(realData, vehicleAge)
+    highlight: generateHighlight(realData, vehicleAge),
+    detail_url: realData.detailurl // 엔카 상세보기 URL 매핑
   };
 }
 

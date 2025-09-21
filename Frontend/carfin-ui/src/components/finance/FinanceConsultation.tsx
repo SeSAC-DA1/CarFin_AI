@@ -177,13 +177,13 @@ export function FinanceConsultation({
   const getRecommendationBadge = (recommendation: string) => {
     switch (recommendation) {
       case 'best':
-        return 'bg-blue-600 text-white';
+        return 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-500/25';
       case 'good':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-500/20 text-green-400 border border-green-500/30';
       case 'fair':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700 text-gray-300 border border-gray-600';
     }
   };
 
@@ -202,17 +202,17 @@ export function FinanceConsultation({
 
   if (isLoading && financeOptions.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Calculator className="w-8 h-8 text-blue-600 animate-pulse" />
+          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+            <Calculator className="w-8 h-8 text-green-400 animate-pulse" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">금융 옵션 분석 중...</h2>
-          <p className="text-gray-600">AI가 최적의 금융 상품을 찾고 있습니다</p>
+          <h2 className="text-xl font-bold text-white mb-2">금융 옵션 분석 중...</h2>
+          <p className="text-gray-400">AI가 최적의 금융 상품을 찾고 있습니다</p>
           {isSearchingRealTime && (
             <div className="mt-4 flex items-center justify-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-600">실시간 금융정보 검색 중...</span>
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm text-green-400">실시간 금융정보 검색 중...</span>
             </div>
           )}
         </div>
@@ -221,25 +221,25 @@ export function FinanceConsultation({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-black/95 backdrop-blur-md border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">금융 상담</h1>
+              <h1 className="text-2xl font-bold text-white">금융 상담</h1>
               {isSearchingRealTime && (
-                <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-700 font-medium">실시간 검색 중</span>
+                <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full border border-green-500/30">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-400 font-medium">실시간 검색 중</span>
                 </div>
               )}
             </div>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               {selectedVehicle.brand} {selectedVehicle.model}에 최적화된 금융 옵션을 확인하세요
             </p>
             {isSearchingRealTime && (
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-green-400 mt-2">
                 💳 최신 금융상품 정보를 검색하여 더 정확한 조건을 제공합니다
               </p>
             )}
@@ -249,16 +249,16 @@ export function FinanceConsultation({
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* 차량 정보 요약 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-gray-800/50 rounded-2xl shadow-sm border border-gray-700 p-6 mb-8 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">선택 차량</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg font-semibold text-white mb-1">선택 차량</h3>
+              <p className="text-gray-400">
                 {selectedVehicle.brand} {selectedVehicle.model} ({selectedVehicle.year})
               </p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-green-400">
                 {selectedVehicle.price.toLocaleString()}만원
               </div>
             </div>
@@ -270,26 +270,26 @@ export function FinanceConsultation({
           {financeOptions.map((option) => (
             <div
               key={option.id}
-              className={`bg-white rounded-2xl shadow-sm border-2 p-6 transition-all duration-200 cursor-pointer hover:shadow-md ${
+              className={`bg-gray-800/50 rounded-2xl shadow-sm border-2 p-6 transition-all duration-200 cursor-pointer hover:shadow-md backdrop-blur-sm ${
                 selectedOption?.id === option.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-300'
+                  ? 'border-green-500 bg-green-500/20'
+                  : 'border-gray-700 hover:border-gray-600'
               }`}
               onClick={() => setSelectedOption(option)}
             >
               {/* 헤더 */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    {option.type === 'cash' && <PiggyBank className="w-5 h-5 text-blue-600" />}
-                    {option.type === 'loan' && <Building className="w-5 h-5 text-blue-600" />}
-                    {option.type === 'lease' && <Calendar className="w-5 h-5 text-blue-600" />}
-                    {option.type === 'installment' && <CreditCard className="w-5 h-5 text-blue-600" />}
+                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30">
+                    {option.type === 'cash' && <PiggyBank className="w-5 h-5 text-green-400" />}
+                    {option.type === 'loan' && <Building className="w-5 h-5 text-green-400" />}
+                    {option.type === 'lease' && <Calendar className="w-5 h-5 text-green-400" />}
+                    {option.type === 'installment' && <CreditCard className="w-5 h-5 text-green-400" />}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{option.title}</h3>
+                    <h3 className="font-semibold text-white">{option.title}</h3>
                     {option.interestRate && (
-                      <p className="text-sm text-gray-500">연 {option.interestRate}%</p>
+                      <p className="text-sm text-gray-400">연 {option.interestRate}%</p>
                     )}
                   </div>
                 </div>
@@ -298,8 +298,8 @@ export function FinanceConsultation({
                     {getRecommendationText(option.recommendation)}
                   </div>
                   {option.id.startsWith('realtime-') && (
-                    <div className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    <div className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium flex items-center gap-1 border border-green-500/30">
+                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
                       실시간
                     </div>
                   )}
@@ -309,23 +309,23 @@ export function FinanceConsultation({
               {/* 금액 정보 */}
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">월 납부액</span>
-                  <span className="font-bold text-lg text-blue-600">
+                  <span className="text-sm text-gray-400">월 납부액</span>
+                  <span className="font-bold text-lg text-green-400">
                     {option.monthlyPayment === 0 ? '-' : `${option.monthlyPayment.toLocaleString()}만원`}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">초기 납부금</span>
-                  <span className="font-medium">{option.downPayment.toLocaleString()}만원</span>
+                  <span className="text-sm text-gray-400">초기 납부금</span>
+                  <span className="font-medium text-white">{option.downPayment.toLocaleString()}만원</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">총 비용</span>
-                  <span className="font-medium">{option.totalCost.toLocaleString()}만원</span>
+                  <span className="text-sm text-gray-400">총 비용</span>
+                  <span className="font-medium text-white">{option.totalCost.toLocaleString()}만원</span>
                 </div>
                 {option.term && (
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">상환 기간</span>
-                    <span className="font-medium">{option.term}개월</span>
+                    <span className="text-sm text-gray-400">상환 기간</span>
+                    <span className="font-medium text-white">{option.term}개월</span>
                   </div>
                 )}
               </div>
@@ -333,22 +333,22 @@ export function FinanceConsultation({
               {/* 장단점 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-medium text-green-700 mb-2">장점</h4>
+                  <h4 className="text-sm font-medium text-green-400 mb-2">장점</h4>
                   <ul className="space-y-1">
                     {option.pros.slice(0, 2).map((pro, index) => (
-                      <li key={index} className="text-xs text-gray-600 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
+                      <li key={index} className="text-xs text-gray-300 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-green-400" />
                         {pro}
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-red-700 mb-2">단점</h4>
+                  <h4 className="text-sm font-medium text-red-400 mb-2">단점</h4>
                   <ul className="space-y-1">
                     {option.cons.slice(0, 2).map((con, index) => (
-                      <li key={index} className="text-xs text-gray-600 flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full bg-red-200"></div>
+                      <li key={index} className="text-xs text-gray-300 flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
                         {con}
                       </li>
                     ))}
@@ -361,33 +361,33 @@ export function FinanceConsultation({
 
         {/* 선택된 옵션 상세 */}
         {selectedOption && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-8">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">선택된 금융 옵션 상세</h3>
+          <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6 mb-8 backdrop-blur-sm">
+            <h3 className="text-lg font-semibold text-green-300 mb-4">선택된 금융 옵션 상세</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl p-4">
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-gray-700">월 납부액</span>
+                  <DollarSign className="w-5 h-5 text-green-400" />
+                  <span className="font-medium text-gray-300">월 납부액</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-green-400">
                   {selectedOption.monthlyPayment === 0 ? '없음' : `${selectedOption.monthlyPayment.toLocaleString()}만원`}
                 </div>
               </div>
-              <div className="bg-white rounded-xl p-4">
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
-                  <PiggyBank className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-gray-700">초기 비용</span>
+                  <PiggyBank className="w-5 h-5 text-green-400" />
+                  <span className="font-medium text-gray-300">초기 비용</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-white">
                   {selectedOption.downPayment.toLocaleString()}만원
                 </div>
               </div>
-              <div className="bg-white rounded-xl p-4">
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calculator className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-gray-700">총 비용</span>
+                  <Calculator className="w-5 h-5 text-green-400" />
+                  <span className="font-medium text-gray-300">총 비용</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-white">
                   {selectedOption.totalCost.toLocaleString()}만원
                 </div>
               </div>
@@ -400,7 +400,7 @@ export function FinanceConsultation({
           <Button
             onClick={onConsultationComplete}
             size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg"
+            className="bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white px-8 py-4 text-lg shadow-lg shadow-green-500/25"
             disabled={!selectedOption}
           >
             <CheckCircle className="w-5 h-5 mr-2" />
@@ -411,7 +411,7 @@ export function FinanceConsultation({
           <Button
             variant="outline"
             size="lg"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 text-lg"
+            className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white px-8 py-4 text-lg bg-transparent"
           >
             <Phone className="w-5 h-5 mr-2" />
             전문가 상담
@@ -419,12 +419,12 @@ export function FinanceConsultation({
         </div>
 
         {/* 주의사항 */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <Globe className="w-5 h-5 text-yellow-600 mt-0.5" />
+            <Globe className="w-5 h-5 text-yellow-400 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-yellow-900 mb-1">금융 상품 안내</h4>
-              <p className="text-sm text-yellow-700">
+              <h4 className="font-semibold text-yellow-300 mb-1">금융 상품 안내</h4>
+              <p className="text-sm text-yellow-400">
                 제시된 금융 옵션은 참고용이며, 실제 조건은 신용도와 소득에 따라 달라질 수 있습니다.
                 정확한 조건은 각 금융기관에 직접 문의하시기 바랍니다.
               </p>
