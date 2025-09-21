@@ -238,6 +238,18 @@ export interface Vehicle {
   description: string;
   highlight?: string;
   detail_url?: string; // 엔카 상세보기 URL
+  // 🧠 멀티 에이전트 분석 결과
+  agent_scores?: {
+    vehicle_expert: number;
+    finance_expert: number;
+    gemini_multi_agent: number;
+    final_score: number;
+    analysis_source: string;
+  };
+  recommendation_reason?: string;
+  data_source?: string;
+  price_adjusted?: boolean;
+  original_price?: number;
 }
 
 // 차량 피드백 타입

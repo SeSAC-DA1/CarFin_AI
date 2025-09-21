@@ -121,7 +121,7 @@ export default function CarFinPage() {
 
   // 차량 선택 단계 - 넷플릭스 스타일 추천
   if (currentPhase === 'grid') {
-    return <NetflixStyleRecommendation />;
+    return <NetflixStyleRecommendation onVehicleSelection={handleVehicleSelection} />;
   }
 
   // 분석 대시보드 단계

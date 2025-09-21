@@ -232,11 +232,37 @@ const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
               </div>
             )}
 
-            {/* 매칭 점수 */}
+            {/* 🧠 AI 멀티 에이전트 분석 점수 */}
             <div className="absolute top-2 right-2">
               <div className="bg-black/70 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium text-green-400">
-                {personalizedScore || vehicle.match_score}% 매치
+                AI {personalizedScore || vehicle.match_score}점
               </div>
+              {/* 멀티 에이전트 분석 상세 정보 (호버시 표시) */}
+              {vehicle.agent_scores && (
+                <div className="absolute top-full right-0 mt-1 bg-black/90 backdrop-blur-sm rounded-lg p-2 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 min-w-[150px]">
+                  <div className="font-semibold mb-1">3개 AI 에이전트 분석</div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-blue-300">차량전문:</span>
+                      <span>{vehicle.agent_scores.vehicle_expert}점</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-300">금융전문:</span>
+                      <span>{vehicle.agent_scores.finance_expert}점</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-purple-300">제미나이:</span>
+                      <span>{vehicle.agent_scores.gemini_multi_agent}점</span>
+                    </div>
+                    <div className="border-t border-gray-600 pt-1 mt-1">
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-yellow-300">종합점수:</span>
+                        <span className="text-green-400">{vehicle.agent_scores.final_score}점</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -271,6 +297,18 @@ const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
                 {vehicle.location}
               </span>
             </div>
+
+            {/* 🧠 AI 추천 이유 */}
+            {vehicle.recommendation_reason && (
+              <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                  <span className="text-xs text-blue-300 leading-relaxed">
+                    {vehicle.recommendation_reason}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* 액션 버튼들 */}
             <div className="flex space-x-2">
@@ -478,7 +516,13 @@ const VehicleSection: React.FC<VehicleSectionProps> = ({
   );
 };
 
-export const NetflixStyleRecommendation: React.FC = () => {
+interface NetflixStyleRecommendationProps {
+  onVehicleSelection?: (vehicles: Vehicle[], feedback: VehicleFeedback[]) => void;
+}
+
+export const NetflixStyleRecommendation: React.FC<NetflixStyleRecommendationProps> = ({
+  onVehicleSelection
+}) => {
   const {
     updatePreferences,
     calculatePersonalizedScore,
@@ -486,32 +530,55 @@ export const NetflixStyleRecommendation: React.FC = () => {
   } = usePersonalizedLearning();
 
   const [heroVehicle, setHeroVehicle] = useState<Vehicle | null>(null);
+  const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
+  const [userFeedback, setUserFeedback] = useState<VehicleFeedback[]>([]);
 
   const handleVehicleFeedback = (vehicleId: string, feedbackType: VehicleFeedback['feedbackType']) => {
     console.log('🧠 AI 학습 시작:', { vehicleId, feedbackType });
 
-    // 모든 섹션에서 해당 차량 찾기
-    let targetVehicle: Vehicle | null = null;
-
-    // 섹션들을 순회하면서 차량 찾기 (실제 구현시에는 전역 상태 관리)
-    const mockVehicle: Vehicle = {
-      id: vehicleId,
-      brand: '현대',
-      model: '소나타',
-      year: 2022,
-      price: 3000,
-      mileage: 50000,
-      fuel_type: '가솔린',
-      body_type: '세단',
-      color: '화이트',
-      location: '서울',
-      images: [],
-      features: [],
-      fuel_efficiency: 12.5,
-      safety_rating: 5,
-      match_score: 85,
-      description: ''
+    // 피드백 저장
+    const newFeedback: VehicleFeedback = {
+      vehicleId,
+      feedbackType,
+      timestamp: new Date()
     };
+
+    setUserFeedback(prev => [...prev.filter(f => f.vehicleId !== vehicleId), newFeedback]);
+
+    // 관심 있는 차량들을 선택된 차량으로 추가
+    if (feedbackType === 'love' || feedbackType === 'like' || feedbackType === 'maybe') {
+      // TODO: 실제 구현에서는 해당 차량 데이터를 찾아서 추가
+      // 지금은 mock 데이터로 처리
+      const mockVehicle: Vehicle = {
+        id: vehicleId,
+        brand: '현대',
+        model: '소나타',
+        year: 2022,
+        price: 3000,
+        mileage: 50000,
+        fuel_type: '가솔린',
+        body_type: '세단',
+        color: '화이트',
+        location: '서울',
+        images: [],
+        features: [],
+        fuel_efficiency: 12.5,
+        safety_rating: 5,
+        match_score: 85,
+        description: ''
+      };
+
+      setSelectedVehicles(prev => {
+        const exists = prev.find(v => v.id === vehicleId);
+        if (!exists) {
+          return [...prev, mockVehicle];
+        }
+        return prev;
+      });
+    } else if (feedbackType === 'dislike') {
+      // 싫어하는 차량은 선택에서 제거
+      setSelectedVehicles(prev => prev.filter(v => v.id !== vehicleId));
+    }
 
     try {
       updatePreferences(mockVehicle, feedbackType);
@@ -617,6 +684,24 @@ export const NetflixStyleRecommendation: React.FC = () => {
 
       {/* 🔥 AI 학습 모니터 */}
       <AILearningMonitor userId="guest" />
+
+      {/* 상담 받기 플로팅 버튼 */}
+      {(selectedVehicles.length > 0 || userFeedback.length > 0) && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
+            onClick={() => {
+              if (onVehicleSelection) {
+                onVehicleSelection(selectedVehicles, userFeedback);
+              }
+            }}
+          >
+            <Target className="w-5 h-5 mr-2" />
+            상담 받기 ({selectedVehicles.length}대)
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
