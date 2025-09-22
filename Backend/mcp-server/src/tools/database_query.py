@@ -24,11 +24,15 @@ class DatabaseQueryTool:
     def __init__(self):
         # 데이터베이스 연결 설정
         self.db_config = {
-            "host": "carfin-db.cbkayiqs4div.ap-northeast-2.rds.amazonaws.com",
-            "port": 5432,
-            "database": "carfin",
-            "user": os.getenv("DB_USER", "carfin_user"),
-            "password": os.getenv("DB_PASSWORD", "your_password")
+            "host": os.getenv("DB_HOST", "carfin-db.cbkayiqs4div.ap-northeast-2.rds.amazonaws.com"),
+            "port": int(os.getenv("DB_PORT", "5432")),
+            "database": os.getenv("DB_NAME", "carfin"),
+            "user": os.getenv("DB_USER", "carfin_admin"),
+            "password": os.getenv("DB_PASSWORD", "carfin_password"),
+            "ssl": "require",  # AWS RDS SSL 연결 필수
+            "server_settings": {
+                "application_name": "CarFin_MCP_Server"
+            }
         }
 
         self.connection_pool = None

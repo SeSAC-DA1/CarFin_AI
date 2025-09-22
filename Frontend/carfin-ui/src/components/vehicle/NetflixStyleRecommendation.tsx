@@ -565,34 +565,20 @@ export const NetflixStyleRecommendation: React.FC<NetflixStyleRecommendationProp
 
     // 관심 있는 차량들을 선택된 차량으로 추가
     if (feedbackType === 'love' || feedbackType === 'like' || feedbackType === 'maybe') {
-      // TODO: 실제 구현에서는 해당 차량 데이터를 찾아서 추가
-      // 지금은 mock 데이터로 처리
-      const mockVehicle: Vehicle = {
-        id: vehicleId,
-        brand: '현대',
-        model: '소나타',
-        year: 2022,
-        price: 3000,
-        mileage: 50000,
-        fuel_type: '가솔린',
-        body_type: '세단',
-        color: '화이트',
-        location: '서울',
-        images: [],
-        features: [],
-        fuel_efficiency: 12.5,
-        safety_rating: 5,
-        match_score: 85,
-        description: ''
-      };
+      // 실제 차량 데이터를 찾아서 추가 (현재 표시된 차량들에서 검색)
+      const foundVehicle = vehicles.find(v => v.id === vehicleId);
 
-      setSelectedVehicles(prev => {
-        const exists = prev.find(v => v.id === vehicleId);
-        if (!exists) {
-          return [...prev, mockVehicle];
-        }
-        return prev;
-      });
+      if (foundVehicle) {
+        setSelectedVehicles(prev => {
+          const exists = prev.find(v => v.id === vehicleId);
+          if (!exists) {
+            return [...prev, foundVehicle];
+          }
+          return prev;
+        });
+      } else {
+        console.warn(`차량 ID ${vehicleId}를 찾을 수 없습니다.`);
+      }
     } else if (feedbackType === 'dislike') {
       // 싫어하는 차량은 선택에서 제거
       setSelectedVehicles(prev => prev.filter(v => v.id !== vehicleId));

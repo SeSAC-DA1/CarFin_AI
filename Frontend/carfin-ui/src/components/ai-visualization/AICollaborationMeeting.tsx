@@ -11,8 +11,8 @@ import { AgentWorkstation } from './AgentWorkstation';
 import { Users, Zap, Clock, Target, ArrowRight } from 'lucide-react';
 import { UserData, VehicleData } from '@/lib/inference-engines/RealAgentEngine';
 
-// WebSocket 메시지 타입 정의
-interface WebSocketMessage {
+// SSE 메시지 타입 정의
+interface SSEMessage {
   type: string;
   agent_name?: string;
   status?: string;
@@ -129,8 +129,8 @@ export function AICollaborationMeeting({
   const [currentStep, setCurrentStep] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-  const wsRef = useRef<WebSocket | null>(null);
+  const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+  const sseRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string>(`session_${Date.now()}`);
 
   // 에이전트 상태 업데이트 함수
@@ -152,14 +152,14 @@ export function AICollaborationMeeting({
     }));
   };
 
-  // WebSocket 메시지 처리
-  const handleWebSocketMessage = (message: WebSocketMessage) => {
-    console.log('📡 WebSocket 메시지:', message);
+  // SSE 메시지 처리
+  const handleSSEMessage = (message: SSEMessage) => {
+    console.log('📡 SSE 메시지:', message);
 
     switch (message.type) {
       case 'connection_established':
         setIsConnected(true);
-        setWsStatus('connected');
+        setSseStatus('connected');
         break;
 
       case 'recommendation_started':
@@ -254,71 +254,114 @@ export function AICollaborationMeeting({
           currentMessage: '오류가 발생했습니다'
         })));
         break;
+
+      case 'keep_alive':
+        // Keep-alive 메시지는 무시
+        break;
     }
   };
 
-  // WebSocket 연결 설정
+  // SSE 연결 설정
   useEffect(() => {
     if (!isActive) return;
 
-    const connectWebSocket = () => {
+    const connectSSE = async () => {
       try {
-        setWsStatus('connecting');
-        const wsUrl = `ws://localhost:9000/ws/${sessionIdRef.current}`;
-        console.log('🔗 WebSocket 연결 시도:', wsUrl);
+        setSseStatus('connecting');
+        const sseUrl = `http://localhost:9000/sse/${sessionIdRef.current}`;
+        console.log('🔗 SSE 연결 시도:', sseUrl);
 
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
+        const eventSource = new EventSource(sseUrl);
+        sseRef.current = eventSource;
 
-        ws.onopen = () => {
-          console.log('✅ WebSocket 연결 성공');
-          setWsStatus('connected');
+        eventSource.onopen = () => {
+          console.log('✅ SSE 연결 성공');
+          setSseStatus('connected');
           setIsConnected(true);
-
-          // 추천 프로세스 시작 요청
-          if (userData) {
-            ws.send(JSON.stringify({
-              type: 'start_recommendation',
-              user_profile: userData
-            }));
-          }
         };
 
-        ws.onmessage = (event) => {
+        eventSource.onmessage = (event) => {
           try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            handleWebSocketMessage(message);
+            const message: SSEMessage = JSON.parse(event.data);
+            handleSSEMessage(message);
           } catch (error) {
-            console.error('❌ WebSocket 메시지 파싱 오류:', error);
+            console.error('❌ SSE 메시지 파싱 오류:', error);
           }
         };
 
-        ws.onclose = () => {
-          console.log('🔌 WebSocket 연결 종료');
-          setWsStatus('disconnected');
+        // 특정 이벤트 타입 처리
+        eventSource.addEventListener('connection', (event) => {
+          try {
+            const message: SSEMessage = JSON.parse(event.data);
+            handleSSEMessage(message);
+          } catch (error) {
+            console.error('❌ SSE 연결 메시지 파싱 오류:', error);
+          }
+        });
+
+        eventSource.addEventListener('agent_progress', (event) => {
+          try {
+            const message: SSEMessage = JSON.parse(event.data);
+            handleSSEMessage(message);
+          } catch (error) {
+            console.error('❌ SSE 진행상황 메시지 파싱 오류:', error);
+          }
+        });
+
+        eventSource.addEventListener('ping', (event) => {
+          // Keep-alive 메시지는 무시
+        });
+
+        eventSource.onerror = (error) => {
+          console.error('❌ SSE 오류:', error);
+          setSseStatus('error');
           setIsConnected(false);
+          // 백엔드가 없을 경우 시뮬레이션 모드로 폴백
+          startSimulationMode();
         };
 
-        ws.onerror = (error) => {
-          console.error('❌ WebSocket 오류:', error);
-          setWsStatus('error');
-          setIsConnected(false);
-        };
+        // SSE 연결 후 추천 프로세스 시작 요청
+        if (userData) {
+          setTimeout(async () => {
+            try {
+              const response = await fetch(`http://localhost:9000/mcp/recommend/realtime/${sessionIdRef.current}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  user_profile: userData,
+                  request_type: 'full_recommendation',
+                  limit: 10
+                })
+              });
+
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+
+              const result = await response.json();
+              console.log('✅ 추천 프로세스 시작:', result);
+            } catch (error) {
+              console.error('❌ 추천 프로세스 시작 실패:', error);
+              startSimulationMode();
+            }
+          }, 1000); // SSE 연결 후 1초 대기
+        }
 
       } catch (error) {
-        console.error('❌ WebSocket 연결 실패:', error);
-        setWsStatus('error');
-
+        console.error('❌ SSE 연결 실패:', error);
+        setSseStatus('error');
         // 백엔드가 없을 경우 시뮬레이션 모드로 폴백
         startSimulationMode();
       }
     };
 
-    connectWebSocket();
+    connectSSE();
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+      if (sseRef.current) {
+        sseRef.current.close();
       }
     };
   }, [isActive, userData]);
@@ -327,7 +370,7 @@ export function AICollaborationMeeting({
   const startSimulationMode = () => {
     console.log('🎭 시뮬레이션 모드 시작');
     setIsConnected(true);
-    setWsStatus('connected');
+    setSseStatus('connected');
 
     // 기존 시뮬레이션 로직 실행
     simulateCollaboration();
@@ -466,20 +509,20 @@ export function AICollaborationMeeting({
           </div>
           AI 에이전트 협업 회의실
 
-          {/* WebSocket 연결 상태 */}
+          {/* SSE 연결 상태 */}
           <Badge
             variant="outline"
             className={`${
-              wsStatus === 'connected' ? 'bg-green-100 text-green-800' :
-              wsStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800 animate-pulse' :
-              wsStatus === 'error' ? 'bg-red-100 text-red-800' :
+              sseStatus === 'connected' ? 'bg-green-100 text-green-800' :
+              sseStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800 animate-pulse' :
+              sseStatus === 'error' ? 'bg-red-100 text-red-800' :
               'bg-gray-100 text-gray-800'
             }`}
           >
-            {wsStatus === 'connected' && '🟢 실시간 연결'}
-            {wsStatus === 'connecting' && '🟡 연결 중...'}
-            {wsStatus === 'error' && '🔴 시뮬레이션'}
-            {wsStatus === 'disconnected' && '⚪ 준비 중'}
+            {sseStatus === 'connected' && '🟢 실시간 연결'}
+            {sseStatus === 'connecting' && '🟡 연결 중...'}
+            {sseStatus === 'error' && '🔴 시뮬레이션'}
+            {sseStatus === 'disconnected' && '⚪ 준비 중'}
           </Badge>
 
           {isCollaborating && (

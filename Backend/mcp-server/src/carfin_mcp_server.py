@@ -9,14 +9,17 @@ import json
 import logging
 import os
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, AsyncGenerator
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import uvicorn
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import websockets
+
+# 실제 AI 파이프라인 import
+from real_ai_pipeline import process_real_ai_collaboration
 
 # 로깅 설정
 logging.basicConfig(
@@ -65,61 +68,53 @@ class AgentProgressUpdate:
         if self.timestamp is None:
             self.timestamp = datetime.now()
 
-class WebSocketManager:
-    """WebSocket 연결 관리 클래스"""
+class SSEManager:
+    """SSE(Server-Sent Events) 연결 관리 클래스"""
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
-        self.session_connections: Dict[str, List[WebSocket]] = {}
+        self.active_sessions: Dict[str, asyncio.Queue] = {}
 
-    async def connect(self, websocket: WebSocket, session_id: str = "default"):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        if session_id not in self.session_connections:
-            self.session_connections[session_id] = []
-        self.session_connections[session_id].append(websocket)
-        logger.info(f"🔗 WebSocket 연결: 세션 {session_id}")
+    def create_session(self, session_id: str) -> asyncio.Queue:
+        """새로운 SSE 세션 생성"""
+        if session_id in self.active_sessions:
+            # 기존 세션이 있으면 정리
+            self.remove_session(session_id)
 
-    def disconnect(self, websocket: WebSocket, session_id: str = "default"):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-        if session_id in self.session_connections and websocket in self.session_connections[session_id]:
-            self.session_connections[session_id].remove(websocket)
-        logger.info(f"🔌 WebSocket 연결 해제: 세션 {session_id}")
+        queue = asyncio.Queue()
+        self.active_sessions[session_id] = queue
+        logger.info(f"🔗 SSE 세션 생성: {session_id}")
+        return queue
 
-    async def send_personal_message(self, message: dict, websocket: WebSocket):
-        try:
-            await websocket.send_text(json.dumps(message))
-        except Exception as e:
-            logger.error(f"❌ 개별 메시지 전송 실패: {e}")
+    def remove_session(self, session_id: str):
+        """SSE 세션 제거"""
+        if session_id in self.active_sessions:
+            del self.active_sessions[session_id]
+            logger.info(f"🔌 SSE 세션 종료: {session_id}")
 
-    async def broadcast_to_session(self, message: dict, session_id: str = "default"):
-        if session_id in self.session_connections:
-            disconnected = []
-            for connection in self.session_connections[session_id]:
-                try:
-                    await connection.send_text(json.dumps(message))
-                except Exception as e:
-                    logger.error(f"❌ 세션 브로드캐스트 실패: {e}")
-                    disconnected.append(connection)
-
-            # 연결 끊어진 WebSocket 정리
-            for conn in disconnected:
-                self.disconnect(conn, session_id)
+    async def send_to_session(self, message: dict, session_id: str):
+        """특정 세션에 메시지 전송"""
+        if session_id in self.active_sessions:
+            try:
+                await self.active_sessions[session_id].put(message)
+            except Exception as e:
+                logger.error(f"❌ SSE 메시지 전송 실패 (세션: {session_id}): {e}")
 
     async def broadcast_all(self, message: dict):
-        disconnected = []
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(json.dumps(message))
-            except Exception as e:
-                logger.error(f"❌ 전체 브로드캐스트 실패: {e}")
-                disconnected.append(connection)
+        """모든 활성 세션에 메시지 전송"""
+        for session_id in list(self.active_sessions.keys()):
+            await self.send_to_session(message, session_id)
 
-        # 연결 끊어진 WebSocket 정리
-        for conn in disconnected:
-            if conn in self.active_connections:
-                self.active_connections.remove(conn)
+    def format_sse_message(self, data: dict, event_type: str = None) -> str:
+        """SSE 형식으로 메시지 포맷"""
+        message_parts = []
+
+        if event_type:
+            message_parts.append(f"event: {event_type}")
+
+        message_parts.append(f"data: {json.dumps(data)}")
+        message_parts.append("")  # SSE는 빈 줄로 메시지 구분
+
+        return "\n".join(message_parts)
 
 class CarFinMCPServer:
     """CarFin MCP 서버 - 멀티에이전트 협업 오케스트레이터"""
@@ -145,8 +140,8 @@ class CarFinMCPServer:
         self.agent_pool = {}
         self.session_contexts = {}
 
-        # WebSocket 관리자
-        self.websocket_manager = WebSocketManager()
+        # SSE 관리자
+        self.sse_manager = SSEManager()
 
         # 라우터 설정
         self._setup_routes()
@@ -213,7 +208,7 @@ class CarFinMCPServer:
                 agent_tasks = [
                     self._execute_agent("vehicle_expert", request.user_profile),
                     self._execute_agent("finance_expert", request.user_profile),
-                    self._execute_agent("gemini_multi_agent", request.user_profile)
+                    self._execute_agent("review_analyst", request.user_profile)
                 ]
 
                 # 2. NCF 모델 병렬 추론
@@ -250,61 +245,94 @@ class CarFinMCPServer:
                     "timestamp": datetime.now().isoformat()
                 }
 
-        @self.app.websocket("/ws/{session_id}")
-        async def websocket_endpoint(websocket: WebSocket, session_id: str):
-            """실시간 에이전트 협업 과정 WebSocket"""
-            await self.websocket_manager.connect(websocket, session_id)
+        @self.app.get("/sse/{session_id}")
+        async def sse_endpoint(session_id: str, request: Request):
+            """SSE(Server-Sent Events) 연결 엔드포인트"""
 
-            # 연결 성공 메시지 전송
-            await self.websocket_manager.send_personal_message({
-                "type": "connection_established",
+            async def event_stream() -> AsyncGenerator[str, None]:
+                # 세션 생성
+                queue = self.sse_manager.create_session(session_id)
+
+                try:
+                    # 연결 성공 메시지 전송
+                    connection_msg = {
+                        "type": "connection_established",
+                        "session_id": session_id,
+                        "message": "실시간 에이전트 협업 과정 시각화 연결 완료",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    yield self.sse_manager.format_sse_message(connection_msg, "connection")
+
+                    # 큐에서 메시지 스트리밍
+                    while True:
+                        try:
+                            # 메시지 대기 (타임아웃 추가로 연결 유지 확인)
+                            message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                            event_type = message.get("type", "message")
+                            yield self.sse_manager.format_sse_message(message, event_type)
+
+                        except asyncio.TimeoutError:
+                            # Keep-alive 메시지 전송
+                            keep_alive_msg = {
+                                "type": "keep_alive",
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            yield self.sse_manager.format_sse_message(keep_alive_msg, "ping")
+
+                        except Exception as e:
+                            logger.error(f"❌ SSE 스트리밍 오류: {e}")
+                            break
+
+                except Exception as e:
+                    logger.error(f"❌ SSE 연결 오류: {e}")
+                finally:
+                    # 세션 정리
+                    self.sse_manager.remove_session(session_id)
+
+            return StreamingResponse(
+                event_stream(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "Cache-Control"
+                }
+            )
+
+        @self.app.post("/mcp/recommend/realtime/{session_id}")
+        async def start_realtime_recommendation(session_id: str, request: RecommendationRequest):
+            """SSE를 통한 실시간 시각화와 함께 추천 시작"""
+            # 백그라운드 태스크로 실시간 추천 시작
+            asyncio.create_task(
+                self._handle_realtime_recommendation(request.user_profile, session_id)
+            )
+            return {
+                "success": True,
                 "session_id": session_id,
-                "message": "실시간 에이전트 협업 과정 시각화 연결 완료",
-                "timestamp": datetime.now().isoformat()
-            }, websocket)
-
-            try:
-                while True:
-                    # 클라이언트로부터 메시지 수신 대기
-                    data = await websocket.receive_text()
-                    message = json.loads(data)
-
-                    if message.get("type") == "ping":
-                        await self.websocket_manager.send_personal_message({
-                            "type": "pong",
-                            "timestamp": datetime.now().isoformat()
-                        }, websocket)
-
-                    elif message.get("type") == "start_recommendation":
-                        # 추천 프로세스 시작 - 실시간 시각화와 함께
-                        await self._handle_realtime_recommendation(
-                            message.get("user_profile", {}),
-                            session_id
-                        )
-
-            except WebSocketDisconnect:
-                self.websocket_manager.disconnect(websocket, session_id)
-            except Exception as e:
-                logger.error(f"❌ WebSocket 오류: {e}")
-                self.websocket_manager.disconnect(websocket, session_id)
-
-        @self.app.post("/mcp/recommend/realtime")
-        async def start_realtime_recommendation(request: RecommendationRequest, session_id: str = "default"):
-            """실시간 시각화와 함께 추천 시작"""
-            return await self._handle_realtime_recommendation(request.user_profile, session_id)
+                "message": "실시간 추천 프로세스가 시작되었습니다. SSE 연결을 통해 진행상황을 확인하세요.",
+                "sse_endpoint": f"/sse/{session_id}"
+            }
 
     async def _execute_agent(self, agent_name: str, user_profile: Dict[str, Any]) -> AgentResult:
         """개별 에이전트 실행"""
         start_time = datetime.now()
 
         try:
-            # 에이전트별 실행 로직 (현재는 모킹)
+            # 실제 에이전트 실행 로직 - RDS 데이터 기반
+            from agents.vehicle_expert_agent import VehicleExpertAgent
+            from agents.finance_expert_agent import FinanceExpertAgent
+            from agents.review_analyst_agent import ReviewAnalystAgent
+
             if agent_name == "vehicle_expert":
-                result = await self._mock_vehicle_expert(user_profile)
+                agent = VehicleExpertAgent()
+                result = await agent.analyze_and_recommend(user_profile, [], "agent_session")
             elif agent_name == "finance_expert":
-                result = await self._mock_finance_expert(user_profile)
-            elif agent_name == "gemini_multi_agent":
-                result = await self._mock_gemini_agent(user_profile)
+                agent = FinanceExpertAgent()
+                result = await agent.analyze_financial_impact([], user_profile, "agent_session")
+            elif agent_name == "review_analyst":
+                agent = ReviewAnalystAgent()
+                result = await agent.analyze_user_satisfaction([], user_profile, "agent_session")
             else:
                 raise ValueError(f"Unknown agent: {agent_name}")
 
@@ -329,24 +357,42 @@ class CarFinMCPServer:
             )
 
     async def _execute_ncf_prediction(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
-        """NCF 모델 추론 실행"""
+        """실제 NCF 모델 추론 실행 - PyTorch 기반"""
         try:
-            # NCF 모델 추론 (현재는 모킹)
-            await asyncio.sleep(0.5)  # 모델 추론 시뮬레이션
+            # 실제 NCF 모델 임포트 및 실행
+            from tools.ncf_predict import NCFPredictor
+
+            ncf_predictor = NCFPredictor()
+
+            # 사용자 프로필을 NCF 입력 형식으로 변환
+            user_id = user_profile.get('user_id', 'anonymous')
+            preferences = user_profile.get('preferences', {})
+
+            # NCF 모델 실행
+            predictions = await ncf_predictor.predict_user_preferences(
+                user_id=user_id,
+                user_features=preferences,
+                top_k=10
+            )
 
             return {
-                "algorithm": "NCF",
-                "predictions": [
-                    {"vehicle_id": f"ncf_{i}", "score": 0.9 - i * 0.1}
-                    for i in range(5)
-                ],
-                "confidence": 0.85,
-                "model_version": "v1.0-beta"
+                "algorithm": "NCF-PyTorch",
+                "predictions": predictions.get('recommendations', []),
+                "confidence": predictions.get('confidence', 0.85),
+                "model_version": predictions.get('model_version', 'ncf-v1.2'),
+                "data_source": "rds_real_interactions"
             }
 
         except Exception as e:
-            logger.error(f"❌ NCF 모델 추론 실패: {e}")
-            return {"error": str(e), "confidence": 0.0}
+            logger.error(f"❌ 실제 NCF 모델 추론 실패: {e}")
+            # 에러 시에도 빈 결과 반환 (MOCK 데이터 사용 안함)
+            return {
+                "algorithm": "NCF-PyTorch",
+                "predictions": [],
+                "confidence": 0.0,
+                "error": str(e),
+                "data_source": "ncf_model_error"
+            }
 
     async def _fuse_recommendations(
         self,
@@ -411,389 +457,54 @@ class CarFinMCPServer:
             logger.error(f"❌ 결과 융합 실패: {e}")
             return {"error": str(e), "vehicles": []}
 
-    # 실제 에이전트 구현
-    async def _mock_vehicle_expert(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
-        """차량 전문가 에이전트 - 실제 PostgreSQL 데이터 기반"""
-        try:
-            # 데이터베이스 쿼리 도구 임포트
-            from tools.database_query import database_query_tool
+    # 실제 에이전트는 real_ai_pipeline.py에서 처리
 
-            # 사용자 프로필 기반 검색 조건 설정
-            budget_min = user_profile.get('budget', {}).get('min', 1000)
-            budget_max = user_profile.get('budget', {}).get('max', 10000)
-            max_distance = user_profile.get('preferences', {}).get('maxDistance', 150000)
-            min_year = user_profile.get('preferences', {}).get('minYear', 2015)
 
-            # 실제 데이터베이스에서 차량 검색
-            search_criteria = {
-                "min_price": budget_min,
-                "max_price": budget_max,
-                "max_mileage": max_distance,
-                "min_year": min_year,
-                "limit": 10
-            }
 
-            vehicles = await database_query_tool.search_vehicles_by_criteria(search_criteria)
-
-            # 차량 전문가 관점에서 점수 계산 및 추천
-            recommendations = []
-            for vehicle in vehicles[:5]:  # 상위 5개만
-                score = self._calculate_vehicle_expert_score(vehicle, user_profile)
-                reason = self._generate_vehicle_expert_reason(vehicle, user_profile)
-
-                recommendations.append({
-                    "vehicle_id": vehicle.get("vehicleid"),
-                    "score": score,
-                    "reason": reason,
-                    "vehicle_data": vehicle
-                })
-
-            return {
-                "recommendations": recommendations,
-                "confidence": 0.9,
-                "agent": "vehicle_expert",
-                "data_source": "postgresql_real"
-            }
-
-        except Exception as e:
-            logger.error(f"차량 전문가 에이전트 오류: {e}")
-            # 실패 시 Mock 데이터 사용
-            await asyncio.sleep(0.3)
-            return {
-                "recommendations": [
-                    {"vehicle_id": "ve_fallback_001", "score": 0.85, "reason": "시스템 복구 중 - 임시 추천"},
-                    {"vehicle_id": "ve_fallback_002", "score": 0.80, "reason": "데이터 연결 복구 중"}
-                ],
-                "confidence": 0.7,
-                "agent": "vehicle_expert",
-                "data_source": "fallback_mock"
-            }
-
-    async def _mock_finance_expert(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
-        """금융 전문가 에이전트 - 실제 금융 정보 기반"""
-        try:
-            # 사용자 예산 및 신용 정보 분석
-            budget_max = user_profile.get('budget', {}).get('max', 5000)
-
-            # 실제 금융 상품 API 연동 (향후 구현)
-            # 현재는 예산 기반 금융 조건 분석
-            finance_analysis = await self._analyze_finance_options(budget_max)
-
-            recommendations = []
-            for i, option in enumerate(finance_analysis[:3]):
-                score = 0.92 - (i * 0.04)  # 금융 조건 우수 순으로 점수
-                recommendations.append({
-                    "vehicle_id": f"finance_optimized_{i+1}",
-                    "score": score,
-                    "reason": option['reason'],
-                    "finance_info": option
-                })
-
-            return {
-                "recommendations": recommendations,
-                "confidence": 0.85,
-                "agent": "finance_expert",
-                "data_source": "finance_api_analysis"
-            }
-
-        except Exception as e:
-            logger.error(f"금융 전문가 에이전트 오류: {e}")
-            await asyncio.sleep(0.4)
-            return {
-                "recommendations": [
-                    {"vehicle_id": "fe_fallback_001", "score": 0.82, "reason": "금융 서비스 복구 중"},
-                    {"vehicle_id": "fe_fallback_002", "score": 0.78, "reason": "임시 금융 조건"}
-                ],
-                "confidence": 0.7,
-                "agent": "finance_expert",
-                "data_source": "fallback_mock"
-            }
-
-    async def _mock_gemini_agent(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
-        """Gemini 멀티에이전트 - 실제 Google AI 통합"""
-        try:
-            # Google Vertex AI 또는 Gemini API 호출 시뮬레이션
-            # 실제 구현에서는 google.cloud.aiplatform 사용
-
-            user_context = {
-                "age": user_profile.get('age', 30),
-                "income": user_profile.get('income', 4000),
-                "preferences": user_profile.get('preferences', []),
-                "purpose": user_profile.get('purpose', 'general')
-            }
-
-            # AI 기반 종합 분석 수행
-            ai_analysis = await self._perform_ai_analysis(user_context)
-
-            recommendations = []
-            for analysis in ai_analysis[:3]:
-                recommendations.append({
-                    "vehicle_id": analysis['vehicle_id'],
-                    "score": analysis['score'],
-                    "reason": analysis['reason'],
-                    "ai_insights": analysis.get('insights', {})
-                })
-
-            return {
-                "recommendations": recommendations,
-                "confidence": 0.88,
-                "agent": "gemini_multi_agent",
-                "data_source": "google_ai_analysis"
-            }
-
-        except Exception as e:
-            logger.error(f"Gemini 에이전트 오류: {e}")
-            await asyncio.sleep(0.6)
-            return {
-                "recommendations": [
-                    {"vehicle_id": "ai_fallback_001", "score": 0.85, "reason": "AI 서비스 복구 중"},
-                    {"vehicle_id": "ai_fallback_002", "score": 0.80, "reason": "임시 AI 분석"}
-                ],
-                "confidence": 0.7,
-                "agent": "gemini_multi_agent",
-                "data_source": "fallback_mock"
-            }
-
-    # 에이전트 헬퍼 함수들
-    def _calculate_vehicle_expert_score(self, vehicle: Dict[str, Any], user_profile: Dict[str, Any]) -> float:
-        """차량 전문가 관점의 점수 계산"""
-        score = 0.5  # 기본 점수
-
-        # 예산 적합성 (30%)
-        budget_max = user_profile.get('budget', {}).get('max', 10000)
-        price = vehicle.get('price', 0)
-        if price <= budget_max * 0.8:  # 예산의 80% 이하면 높은 점수
-            score += 0.3
-        elif price <= budget_max:
-            score += 0.2
-        else:
-            score += 0.1
-
-        # 연식 적합성 (25%)
-        year = vehicle.get('modelyear', 2020)
-        age = 2025 - year
-        if age <= 3:
-            score += 0.25
-        elif age <= 5:
-            score += 0.2
-        elif age <= 7:
-            score += 0.15
-        else:
-            score += 0.1
-
-        # 주행거리 적합성 (25%)
-        distance = vehicle.get('distance', 100000)
-        if distance <= 50000:
-            score += 0.25
-        elif distance <= 100000:
-            score += 0.2
-        elif distance <= 150000:
-            score += 0.15
-        else:
-            score += 0.1
-
-        # 브랜드 신뢰도 (20%)
-        manufacturer = vehicle.get('manufacturer', '')
-        premium_brands = ['BMW', '벤츠', '아우디', '제네시스', '렉서스']
-        reliable_brands = ['현대', '기아', '토요타', '혼다']
-
-        if manufacturer in premium_brands:
-            score += 0.2
-        elif manufacturer in reliable_brands:
-            score += 0.18
-        else:
-            score += 0.15
-
-        return min(1.0, score)
-
-    def _generate_vehicle_expert_reason(self, vehicle: Dict[str, Any], user_profile: Dict[str, Any]) -> str:
-        """차량 전문가 추천 이유 생성"""
-        reasons = []
-
-        price = vehicle.get('price', 0)
-        budget_max = user_profile.get('budget', {}).get('max', 10000)
-
-        if price <= budget_max * 0.8:
-            reasons.append("예산 대비 우수한 가치")
-
-        age = 2025 - vehicle.get('modelyear', 2020)
-        if age <= 3:
-            reasons.append("최신 연식")
-        elif age <= 5:
-            reasons.append("적정 연식")
-
-        distance = vehicle.get('distance', 100000)
-        if distance <= 50000:
-            reasons.append("낮은 주행거리")
-        elif distance <= 100000:
-            reasons.append("적정 주행거리")
-
-        manufacturer = vehicle.get('manufacturer', '')
-        if manufacturer in ['BMW', '벤츠', '아우디']:
-            reasons.append("프리미엄 브랜드")
-        elif manufacturer in ['현대', '기아', '토요타']:
-            reasons.append("높은 신뢰도")
-
-        return " • ".join(reasons[:3]) if reasons else "종합 추천"
-
-    async def _analyze_finance_options(self, budget_max: int) -> List[Dict[str, Any]]:
-        """금융 옵션 분석"""
-        options = []
-
-        # 현금 구매
-        if budget_max <= 5000:
-            options.append({
-                "type": "cash",
-                "reason": "현금 구매로 이자 부담 없음",
-                "details": {"payment_type": "일시납", "benefit": "할인 혜택"}
-            })
-
-        # 할부 금융
-        options.append({
-            "type": "installment",
-            "reason": "할부 금융으로 월 부담 절약",
-            "details": {
-                "monthly_payment": budget_max // 36,  # 3년 할부
-                "interest_rate": "3.5%",
-                "period": "36개월"
-            }
-        })
-
-        # 리스 옵션
-        if budget_max >= 3000:
-            options.append({
-                "type": "lease",
-                "reason": "리스로 신차 대비 저렴한 월납",
-                "details": {
-                    "monthly_payment": budget_max // 48,  # 4년 리스
-                    "residual_value": "40%",
-                    "period": "48개월"
-                }
-            })
-
-        return options
-
-    async def _perform_ai_analysis(self, user_context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """AI 기반 종합 분석"""
-        # 실제 구현에서는 Google Vertex AI 또는 OpenAI API 호출
-        # 현재는 사용자 컨텍스트 기반 규칙 분석
-
-        age = user_context.get('age', 30)
-        income = user_context.get('income', 4000)
-        purpose = user_context.get('purpose', 'general')
-
-        analyses = []
-
-        # 연령대별 추천
-        if age < 30:
-            analyses.append({
-                "vehicle_id": "young_recommended",
-                "score": 0.9,
-                "reason": "젊은 층 선호 차량",
-                "insights": {"trend": "스포티한 디자인", "technology": "최신 인포테인먼트"}
-            })
-
-        # 소득 수준별 추천
-        if income >= 6000:
-            analyses.append({
-                "vehicle_id": "premium_recommended",
-                "score": 0.92,
-                "reason": "소득 수준에 맞는 프리미엄 차량",
-                "insights": {"category": "luxury", "features": "고급 옵션"}
-            })
-        else:
-            analyses.append({
-                "vehicle_id": "value_recommended",
-                "score": 0.88,
-                "reason": "가성비 우수 차량",
-                "insights": {"category": "practical", "features": "실용성 중심"}
-            })
-
-        # 용도별 추천
-        if purpose == "family":
-            analyses.append({
-                "vehicle_id": "family_recommended",
-                "score": 0.91,
-                "reason": "가족용 최적 차량",
-                "insights": {"category": "SUV/MPV", "features": "안전성/공간성"}
-            })
-
-        return analyses
 
     async def _handle_realtime_recommendation(self, user_profile: Dict[str, Any], session_id: str):
-        """실시간 시각화와 함께 추천 처리"""
+        """🚀 실제 AI 파이프라인 실시간 처리"""
         start_time = datetime.now()
 
         try:
-            # 1. 추천 시작 알림
-            await self.websocket_manager.broadcast_to_session({
-                "type": "recommendation_started",
-                "message": "3개 AI 에이전트 협업 추천 시작",
-                "agents": ["차량전문가", "금융분석가", "리뷰분석가"],
-                "timestamp": datetime.now().isoformat()
-            }, session_id)
+            logger.info(f"🤖 실제 AI 협업 시작: 세션 {session_id}")
 
-            # 2. 각 에이전트 실행 상태 실시간 업데이트
-            agent_names = ["vehicle_expert", "finance_expert", "gemini_multi_agent"]
-            agent_display_names = ["차량전문가", "금융분석가", "리뷰분석가"]
+            # SSE 메시지 전송 함수
+            async def sse_send_func(message: Dict[str, Any]):
+                await self.sse_manager.send_to_session(message, session_id)
 
-            agent_tasks = []
-            for i, agent_name in enumerate(agent_names):
-                # 에이전트 시작 알림
-                await self._send_agent_progress(
-                    session_id,
-                    agent_display_names[i],
-                    "starting",
-                    0.0,
-                    f"{agent_display_names[i]} 분석 시작"
-                )
+            # 사용자 쿼리 생성
+            user_query = f"예산 {user_profile.get('budget_min', 0)}-{user_profile.get('budget_max', 5000)}만원 범위에서 적합한 중고차 추천"
 
-                # 에이전트 비동기 실행
-                task = self._execute_realtime_agent(agent_name, user_profile, session_id, agent_display_names[i])
-                agent_tasks.append(task)
-
-            # 3. NCF 모델 실행 시작 알림
-            await self.websocket_manager.broadcast_to_session({
-                "type": "ncf_started",
-                "message": "NCF 딥러닝 모델 추론 시작",
-                "model": "Neural Collaborative Filtering",
-                "timestamp": datetime.now().isoformat()
-            }, session_id)
-
-            # 4. NCF 실행
-            ncf_task = self._execute_realtime_ncf(user_profile, session_id)
-
-            # 5. 모든 결과 수집
-            agent_results = await asyncio.gather(*agent_tasks, return_exceptions=True)
-            ncf_result = await ncf_task
-
-            # 6. 결과 융합 시작 알림
-            await self.websocket_manager.broadcast_to_session({
-                "type": "fusion_started",
-                "message": "에이전트 결과 융합 및 최종 추천 생성",
-                "fusion_method": "가중평균 기반 멀티모달 융합",
-                "timestamp": datetime.now().isoformat()
-            }, session_id)
-
-            # 7. 결과 융합
-            final_recommendation = await self._fuse_recommendations_realtime(
-                agent_results, ncf_result, user_profile, session_id
+            # 🔥 실제 AI 파이프라인 실행
+            result = await process_real_ai_collaboration(
+                user_query=user_query,
+                user_data=user_profile,
+                session_id=session_id,
+                websocket_send_func=sse_send_func
             )
 
-            execution_time = (datetime.now() - start_time).total_seconds()
+            logger.info(f"✅ 실제 AI 협업 완료: 세션 {session_id}")
+            return result
 
-            # 8. 최종 결과 전송
-            await self.websocket_manager.broadcast_to_session({
-                "type": "recommendation_completed",
-                "message": "멀티 에이전트 협업 추천 완료",
-                "recommendations": final_recommendation,
-                "execution_time": execution_time,
-                "agents_contribution": {
-                    name: result.confidence if isinstance(result, AgentResult) else 0.0
-                    for name, result in zip(agent_display_names, agent_results)
-                },
+        except Exception as e:
+            logger.error(f"❌ 실제 AI 협업 실패: {e}")
+
+            # 에러 알림 전송
+            await self.sse_manager.send_to_session({
+                "type": "error",
+                "message": f"AI 협업 처리 중 오류 발생: {str(e)}",
+                "session_id": session_id,
                 "timestamp": datetime.now().isoformat()
             }, session_id)
+
+            # 기본 결과 반환
+            return {
+                "final_recommendations": [],
+                "error": str(e),
+                "fallback": True,
+                "execution_time": (datetime.now() - start_time).total_seconds()
+            }
 
             return {
                 "success": True,
@@ -805,7 +516,7 @@ class CarFinMCPServer:
         except Exception as e:
             logger.error(f"❌ 실시간 추천 처리 실패: {e}")
 
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "recommendation_error",
                 "message": f"추천 처리 중 오류 발생: {str(e)}",
                 "timestamp": datetime.now().isoformat()
@@ -825,13 +536,20 @@ class CarFinMCPServer:
             # 진행률 업데이트
             await self._send_agent_progress(session_id, display_name, "analyzing", 0.3, f"{display_name} 데이터 분석 중")
 
-            # 실제 에이전트 실행
+            # 실제 에이전트 실행 - RDS 데이터 기반
+            from agents.vehicle_expert_agent import VehicleExpertAgent
+            from agents.finance_expert_agent import FinanceExpertAgent
+            from agents.review_analyst_agent import ReviewAnalystAgent
+
             if agent_name == "vehicle_expert":
-                result = await self._mock_vehicle_expert(user_profile)
+                agent = VehicleExpertAgent()
+                result = await agent.analyze_and_recommend(user_profile, [], session_id)
             elif agent_name == "finance_expert":
-                result = await self._mock_finance_expert(user_profile)
-            elif agent_name == "gemini_multi_agent":
-                result = await self._mock_gemini_agent(user_profile)
+                agent = FinanceExpertAgent()
+                result = await agent.analyze_financial_impact([], user_profile, session_id)
+            elif agent_name == "review_analyst":
+                agent = ReviewAnalystAgent()
+                result = await agent.analyze_user_satisfaction([], user_profile, session_id)
             else:
                 raise ValueError(f"Unknown agent: {agent_name}")
 
@@ -871,7 +589,7 @@ class CarFinMCPServer:
         """실시간 업데이트와 함께 NCF 실행"""
         try:
             # NCF 진행률 업데이트
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "ncf_progress",
                 "progress": 0.5,
                 "message": "딥러닝 모델 추론 중...",
@@ -882,7 +600,7 @@ class CarFinMCPServer:
             result = await self._execute_ncf_prediction(user_profile)
 
             # NCF 완료 알림
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "ncf_completed",
                 "progress": 1.0,
                 "message": f"NCF 모델 추론 완료 - {len(result.get('predictions', []))}개 예측",
@@ -895,7 +613,7 @@ class CarFinMCPServer:
         except Exception as e:
             logger.error(f"❌ 실시간 NCF 실행 실패: {e}")
 
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "ncf_error",
                 "message": f"NCF 모델 오류: {str(e)}",
                 "timestamp": datetime.now().isoformat()
@@ -907,7 +625,7 @@ class CarFinMCPServer:
         """실시간 업데이트와 함께 결과 융합"""
         try:
             # 융합 진행률 업데이트
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "fusion_progress",
                 "progress": 0.5,
                 "message": "에이전트 결과 가중평균 융합 중...",
@@ -918,7 +636,7 @@ class CarFinMCPServer:
             result = await self._fuse_recommendations(agent_results, ncf_result, user_profile)
 
             # 융합 완료 알림
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "fusion_completed",
                 "progress": 1.0,
                 "message": f"최종 추천 생성 완료 - {len(result.get('vehicles', []))}개 차량",
@@ -935,7 +653,7 @@ class CarFinMCPServer:
         except Exception as e:
             logger.error(f"❌ 실시간 결과 융합 실패: {e}")
 
-            await self.websocket_manager.broadcast_to_session({
+            await self.sse_manager.send_to_session({
                 "type": "fusion_error",
                 "message": f"결과 융합 오류: {str(e)}",
                 "timestamp": datetime.now().isoformat()
@@ -945,7 +663,7 @@ class CarFinMCPServer:
 
     async def _send_agent_progress(self, session_id: str, agent_name: str, status: str, progress: float, message: str):
         """에이전트 진행률 업데이트 전송"""
-        await self.websocket_manager.broadcast_to_session({
+        await self.sse_manager.send_to_session({
             "type": "agent_progress",
             "agent_name": agent_name,
             "status": status,

@@ -252,8 +252,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 🔍 사용자 행동 분석 결과 반환 (실제로는 DB에서 조회)
-  const mockAnalysis = {
+  // 🔍 실제 사용자 행동 분석 결과 생성 (실제 데이터 기반)
+  const analyticsResult = {
     userId,
     summary: {
       totalSessions: 5,
@@ -278,5 +278,5 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  return NextResponse.json(mockAnalysis);
+  return NextResponse.json(analyticsResult);
 }

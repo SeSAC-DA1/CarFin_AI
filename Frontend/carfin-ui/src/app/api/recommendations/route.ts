@@ -1,6 +1,5 @@
-// Next.js API Route: 추천 시스템 서빙
+// Next.js API Route: 실제 AI 추천 시스템 서빙 - RDS 데이터 기반
 import { NextRequest, NextResponse } from 'next/server';
-import { mockRecommendationEngine } from '@/lib/recommendation/mock-recommendation-engine';
 import { experimentManager } from '@/lib/ab-testing/experiment-manager';
 import {
   RecommendationRequest,
@@ -112,33 +111,16 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(recommendations);
     } catch (fetchError) {
-      console.warn('FastAPI 호출 실패, Mock 엔진 사용:', fetchError);
+      console.error('❌ AI 백엔드 연결 실패:', fetchError);
 
-      // Fallback to mock engine
-      const recommendations = await mockRecommendationEngine.getRecommendations(
-        recommendationRequest
+      return NextResponse.json(
+        {
+          error: 'AI 추천 서비스 연결 실패',
+          message: 'AI 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
+          timestamp: new Date().toISOString()
+        },
+        { status: 503 }
       );
-
-      // A/B 테스트 메트릭 기록 (노출)
-      experimentManager.recordMetric(
-        'algorithm_comparison_v1',
-        body.userId,
-        'impression',
-        recommendations.recommendations.length
-      );
-
-      // 응답 시간 기록
-      const processingTime = Date.now() - startTime;
-      recommendations.metadata.processingTime = processingTime;
-
-      console.log('✅ 추천 완료 (Mock):', {
-        userId: body.userId,
-        count: recommendations.recommendations.length,
-        processingTime: `${processingTime}ms`,
-        source: 'mock'
-      });
-
-      return NextResponse.json(recommendations);
     }
 
   } catch (error) {
@@ -170,26 +152,34 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 간단한 게스트 프로필 생성
-    const guestProfile: RecommendationUserProfile = {
-      user_id: userId,
-      name: 'Guest User',
-      budgetRange: { min: 2000, max: 5000 }, // 기본 예산 범위
-      guest: true,
-      createdAt: new Date(),
-      lastActiveAt: new Date()
-    };
+    // AI 백엔드에서 실제 추천 데이터 가져오기
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-    // 빠른 추천 요청
-    const recommendations = await mockRecommendationEngine.getRecommendations({
-      userId,
-      userProfile: guestProfile,
-      context: {
-        type: type as any,
-        limit
-      }
+    const response = await fetch(`${apiUrl}/api/recommendations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_profile: {
+          user_id: userId,
+          name: 'Guest User',
+          age: 30,
+          income: 4000,
+          preferences: ['연비', '안전성'],
+          purpose: 'commute',
+          budget_range: { min: 2000, max: 5000 }
+        },
+        recommendation_type: type,
+        limit: limit
+      })
     });
 
+    if (!response.ok) {
+      throw new Error(`AI Backend Error: ${response.statusText}`);
+    }
+
+    const recommendations = await response.json();
     return NextResponse.json(recommendations);
 
   } catch (error) {

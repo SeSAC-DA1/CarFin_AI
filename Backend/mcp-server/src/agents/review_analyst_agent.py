@@ -21,6 +21,12 @@ import pandas as pd
 import re
 from collections import Counter, defaultdict
 from enum import Enum
+import sys
+import os
+
+# 실제 KoBERT 모델 import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'models'))
+from kobert_sentiment import kobert_analyzer, analyze_korean_sentiment, analyze_korean_sentiments_batch
 
 logger = logging.getLogger("ReviewAnalyst")
 
@@ -294,39 +300,105 @@ class ReviewAnalystAgent:
         return text.strip()
 
     async def _analyze_sentiments(self, reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """감정 분석 수행"""
+        """실제 KoBERT 기반 감정 분석 수행"""
 
-        sentiment_scores = []
-        sentiment_distribution = {
-            SentimentType.VERY_POSITIVE.value: 0,
-            SentimentType.POSITIVE.value: 0,
-            SentimentType.NEUTRAL.value: 0,
-            SentimentType.NEGATIVE.value: 0,
-            SentimentType.VERY_NEGATIVE.value: 0
-        }
+        try:
+            logger.info(f"🤖 KoBERT 감정분석 시작: {len(reviews)}개 리뷰")
 
-        for review in reviews:
-            # 단순 키워드 기반 감정 분석 (실제 환경에서는 KoBERT 사용)
-            sentiment_score = self._calculate_sentiment_score(review["text"])
-            sentiment_scores.append(sentiment_score)
+            # KoBERT 모델 초기화
+            if not kobert_analyzer.model:
+                await kobert_analyzer.initialize()
 
-            # 감정 분류
-            sentiment_type = self._classify_sentiment(sentiment_score)
-            sentiment_distribution[sentiment_type.value] += 1
+            # 리뷰 텍스트 추출
+            review_texts = [review.get("text", "") for review in reviews if review.get("text")]
 
-        # 비율로 변환
-        total_reviews = len(reviews)
-        if total_reviews > 0:
-            for key in sentiment_distribution:
-                sentiment_distribution[key] = sentiment_distribution[key] / total_reviews
+            if not review_texts:
+                logger.warning("⚠️ 분석할 리뷰 텍스트가 없습니다")
+                return self._get_default_sentiment_result(len(reviews))
 
+            # 실제 KoBERT 배치 감정분석 실행
+            kobert_results = await analyze_korean_sentiments_batch(review_texts)
+
+            # 결과 처리
+            sentiment_scores = []
+            sentiment_distribution = {
+                SentimentType.VERY_POSITIVE.value: 0,
+                SentimentType.POSITIVE.value: 0,
+                SentimentType.NEUTRAL.value: 0,
+                SentimentType.NEGATIVE.value: 0,
+                SentimentType.VERY_NEGATIVE.value: 0
+            }
+
+            confidence_scores = []
+
+            for result in kobert_results:
+                # KoBERT 점수 (1-5)를 사용
+                score = result.get('score', 3.0)
+                sentiment_scores.append(score)
+
+                # 신뢰도 수집
+                confidence = result.get('confidence', 0.5)
+                confidence_scores.append(confidence)
+
+                # 감정 분류 (KoBERT 결과 기반)
+                sentiment_type = self._classify_sentiment_from_kobert(result)
+                sentiment_distribution[sentiment_type.value] += 1
+
+            # 비율로 변환
+            total_analyzed = len(kobert_results)
+            if total_analyzed > 0:
+                for key in sentiment_distribution:
+                    sentiment_distribution[key] = sentiment_distribution[key] / total_analyzed
+
+            avg_sentiment = np.mean(sentiment_scores) if sentiment_scores else 3.0
+            avg_confidence = np.mean(confidence_scores) if confidence_scores else 0.5
+
+            logger.info(f"✅ KoBERT 감정분석 완료: 평균 점수 {avg_sentiment:.2f}, 신뢰도 {avg_confidence:.2f}")
+
+            return {
+                "average_sentiment": float(avg_sentiment),
+                "sentiment_std": float(np.std(sentiment_scores)) if len(sentiment_scores) > 1 else 0.0,
+                "distribution": sentiment_distribution,
+                "total_reviews": len(reviews),
+                "total_analyzed": total_analyzed,
+                "confidence": float(avg_confidence),
+                "kobert_results": kobert_results[:5]  # 첫 5개 결과 샘플
+            }
+
+        except Exception as e:
+            logger.error(f"❌ KoBERT 감정분석 실패: {e}")
+            return self._get_default_sentiment_result(len(reviews))
+
+    def _get_default_sentiment_result(self, total_reviews: int) -> Dict[str, Any]:
+        """KoBERT 실패 시 기본 결과 반환"""
         return {
-            "average_sentiment": np.mean(sentiment_scores) if sentiment_scores else 3.0,
-            "sentiment_std": np.std(sentiment_scores) if sentiment_scores else 0.0,
-            "distribution": sentiment_distribution,
+            "average_sentiment": 3.0,
+            "sentiment_std": 0.0,
+            "distribution": {
+                SentimentType.VERY_POSITIVE.value: 0.1,
+                SentimentType.POSITIVE.value: 0.25,
+                SentimentType.NEUTRAL.value: 0.3,
+                SentimentType.NEGATIVE.value: 0.25,
+                SentimentType.VERY_NEGATIVE.value: 0.1
+            },
             "total_reviews": total_reviews,
-            "confidence": min(0.9, total_reviews / 50)  # 리뷰 수에 따른 신뢰도
+            "total_analyzed": 0,
+            "confidence": 0.5,
+            "kobert_results": [],
+            "fallback": True
         }
+
+    def _classify_sentiment_from_kobert(self, kobert_result: Dict[str, Any]) -> SentimentType:
+        """KoBERT 결과를 SentimentType으로 변환"""
+        sentiment_label = kobert_result.get('sentiment', 'neutral')
+        confidence = kobert_result.get('confidence', 0.5)
+
+        if sentiment_label == 'positive':
+            return SentimentType.VERY_POSITIVE if confidence > 0.8 else SentimentType.POSITIVE
+        elif sentiment_label == 'negative':
+            return SentimentType.VERY_NEGATIVE if confidence > 0.8 else SentimentType.NEGATIVE
+        else:
+            return SentimentType.NEUTRAL
 
     def _calculate_sentiment_score(self, text: str) -> float:
         """키워드 기반 감정 점수 계산"""
