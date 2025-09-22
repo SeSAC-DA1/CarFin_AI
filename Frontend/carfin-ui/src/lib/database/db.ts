@@ -3,17 +3,20 @@ import { Pool, PoolClient } from 'pg';
 
 // 데이터베이스 연결 설정
 const dbConfig = {
-  // 개발환경용 로컬 PostgreSQL 설정
+  // AWS RDS PostgreSQL 설정
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'carfin_ai',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'password',
 
+  // AWS RDS SSL 설정 (개발환경에서도 SSL 필요할 수 있음)
+  ssl: process.env.DB_HOST?.includes('rds.amazonaws.com') ? { rejectUnauthorized: false } : false,
+
   // 연결 풀 설정
   max: 20, // 최대 연결 수
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000, // 타임아웃 늘림
 };
 
 // 연결 풀 생성

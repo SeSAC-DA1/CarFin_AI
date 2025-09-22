@@ -213,7 +213,7 @@ export function VehicleGridSelection({ userProfile, onSelectionComplete }: Vehic
       .filter(f => f.feedbackType === 'dislike' || f.feedbackType === 'expensive')
       .map(f => f.vehicleId);
 
-    let filteredVehicles = allVehicles.filter(v => !dislikedIds.includes(v.id));
+    const filteredVehicles = allVehicles.filter(v => !dislikedIds.includes(v.id));
 
     // 좋아한 차량 우선, 나머지는 매치스코어 순
     const prioritizedVehicles = [

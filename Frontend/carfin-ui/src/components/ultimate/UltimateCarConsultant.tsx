@@ -17,6 +17,7 @@ import {
   Share2,
   Star
 } from 'lucide-react';
+import { CarTermTooltip, HelpIcon, SmartText } from '@/components/ui/car-term-tooltip';
 
 // Phase 정의
 type ConsultationPhase = 'welcome' | 'input' | 'analysis' | 'results' | 'consultation';
@@ -76,59 +77,95 @@ export function UltimateCarConsultant() {
     setProgress(getProgressForPhase(currentPhase));
   }, [currentPhase]);
 
-  // Phase 1: Welcome & Trust Building - Netflix Style
+  // Phase 1: Welcome & Trust Building - Professional Consulting Style
   const renderWelcomePhase = () => (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-red-900 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Netflix-style background overlay */}
-      <div className="absolute inset-0 bg-black/60 z-0"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Professional background overlay */}
+      <div className="absolute inset-0 bg-white/40 z-0"></div>
 
       <div className="max-w-6xl mx-auto text-center relative z-10">
         <div className="mb-12">
-          <div className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl border-4 border-red-500">
+          <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl border-4 border-blue-500">
             <Car className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 tracking-tight">
             CarFin AI
           </h1>
-          <h2 className="text-2xl md:text-3xl font-bold text-red-400 mb-4">
-            전문 컨설턴트
+          <h2 className="text-2xl md:text-3xl font-bold text-blue-600 mb-4">
+            차량 구매 전문 컨설턴트
           </h2>
-          <p className="text-xl md:text-2xl text-gray-200 mb-4 max-w-4xl mx-auto leading-relaxed">
-            정보가 부족해도 괜찮아요. AI 전문가 3명이 완벽하게 도와드릴게요
+          <p className="text-xl md:text-2xl text-gray-700 mb-4 max-w-4xl mx-auto leading-relaxed">
+            자동차 지식이 부족해도 걱정마세요. AI 전문가 3명이 신뢰할 수 있는 상담을 제공합니다
           </p>
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto">
-            딜러보다 더 객관적이고 투명한 전문 분석 • 30초 완료
+          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+            85,000+ 실제 데이터 기반 객관적 분석 • 완전 무료 • 3분 완료
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <Card className="bg-gray-900/90 border-2 border-gray-700 hover:border-red-500 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+          <Card className="bg-white/90 border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 hover:scale-105 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <Brain className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <CardTitle className="text-xl font-bold text-white">차량 전문가 AI</CardTitle>
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Brain className="w-8 h-8 text-blue-600" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-800">차량 전문가 AI</CardTitle>
+              <p className="text-sm text-blue-600 font-medium">Vehicle Expert</p>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-300 text-center leading-relaxed">85,320대 데이터 분석으로 당신에게 딱 맞는 차량 발굴</p>
+              <p className="text-gray-600 text-center leading-relaxed">
+                85,000+ 실제 매물 데이터 분석으로 당신에게 가장 적합한 차량을 찾아드립니다
+              </p>
+              <div className="mt-4 flex justify-center">
+                <CarTermTooltip term="하이브리드">
+                  <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium cursor-help">
+                    하이브리드 추천 시스템 <HelpIcon term="하이브리드" className="inline ml-1" />
+                  </span>
+                </CarTermTooltip>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/90 border-2 border-gray-700 hover:border-red-500 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+          <Card className="bg-white/90 border-2 border-green-200 hover:border-green-400 hover:shadow-lg transition-all duration-300 hover:scale-105 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <TrendingUp className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <CardTitle className="text-xl font-bold text-white">금융 전문가 AI</CardTitle>
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-green-600" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-800">금융 전문가 AI</CardTitle>
+              <p className="text-sm text-green-600 font-medium">Finance Expert</p>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-300 text-center leading-relaxed">3년 후 가치 예측 및 최적 금융 조건 매칭</p>
+              <p className="text-gray-600 text-center leading-relaxed">
+                <CarTermTooltip term="LSTM">LSTM</CarTermTooltip>+<CarTermTooltip term="XGBoost">XGBoost</CarTermTooltip> 모델로 차량 가치 예측 및 최적의 <CarTermTooltip term="금리">금융 조건</CarTermTooltip>을 제안합니다
+              </p>
+              <div className="mt-4 flex justify-center">
+                <CarTermTooltip term="TCO">
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-medium cursor-help">
+                    TCO 분석 포함 <HelpIcon term="TCO" className="inline ml-1" />
+                  </span>
+                </CarTermTooltip>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/90 border-2 border-gray-700 hover:border-red-500 transition-all duration-300 hover:scale-105 backdrop-blur-sm">
+          <Card className="bg-white/90 border-2 border-purple-200 hover:border-purple-400 hover:shadow-lg transition-all duration-300 hover:scale-105 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <MessageSquare className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <CardTitle className="text-xl font-bold text-white">리뷰 분석가 AI</CardTitle>
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-purple-600" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-800">리뷰 분석가 AI</CardTitle>
+              <p className="text-sm text-purple-600 font-medium">Review Analyst</p>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-300 text-center leading-relaxed">실제 구매자 후기 감정분석으로 진짜 만족도 측정</p>
+              <p className="text-gray-600 text-center leading-relaxed">
+                <CarTermTooltip term="KoBERT">KoBERT</CarTermTooltip> 한국어 감정분석으로 실제 구매자들의 솔직한 만족도를 분석합니다
+              </p>
+              <div className="mt-4 flex justify-center">
+                <CarTermTooltip term="KoBERT">
+                  <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm font-medium cursor-help">
+                    한국어 감정분석 AI <HelpIcon term="KoBERT" className="inline ml-1" />
+                  </span>
+                </CarTermTooltip>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -136,56 +173,70 @@ export function UltimateCarConsultant() {
         <Button
           onClick={() => setCurrentPhase('input')}
           size="lg"
-          className="bg-red-600 hover:bg-red-700 text-white px-12 py-6 text-xl font-bold rounded-lg shadow-2xl border-2 border-red-500 hover:border-red-400 transition-all duration-300 hover:scale-105"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-6 text-xl font-bold rounded-lg shadow-xl border-2 border-blue-500 hover:border-blue-400 transition-all duration-300 hover:scale-105"
         >
-          AI 전문가 상담 시작하기 <ArrowRight className="ml-3 w-6 h-6" />
+          무료 전문 상담 시작하기 <ArrowRight className="ml-3 w-6 h-6" />
         </Button>
 
-        <p className="text-gray-300 mt-6 text-lg">
-          ✅ 완전 무료 • ✅ 개인정보 수집 없음 • ✅ 30초 완료
-        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm">
+          <div className="flex items-center space-x-2 bg-white/80 px-4 py-2 rounded-full shadow-sm">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span className="text-gray-700 font-medium">완전 무료</span>
+          </div>
+          <div className="flex items-center space-x-2 bg-white/80 px-4 py-2 rounded-full shadow-sm">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span className="text-gray-700 font-medium">개인정보 수집 없음</span>
+          </div>
+          <div className="flex items-center space-x-2 bg-white/80 px-4 py-2 rounded-full shadow-sm">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span className="text-gray-700 font-medium">3분 완료</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 
-  // Phase 2: 혁신적인 대화형 정보 입력
+  // Phase 2: 전문적이고 친근한 정보 수집
   const renderInputPhase = () => {
 
     const questions = [
       {
         id: 'usage',
         emoji: '🚗',
-        title: '첫 번째 질문입니다!',
-        subtitle: '어떤 상황에서 차를 가장 많이 사용하실 예정인가요?',
+        title: '차량 사용 목적을 알려주세요',
+        subtitle: '어떤 용도로 차량을 가장 많이 사용하실 예정인가요?',
+        helpText: '사용 목적에 따라 최적의 차종과 옵션이 달라집니다',
         options: [
-          { value: '출퇴근용', emoji: '🏢', description: '매일 회사 다니는 용도' },
-          { value: '가족용', emoji: '👨‍👩‍👧‍👦', description: '가족과 함께 이동' },
-          { value: '레저용', emoji: '🏖️', description: '주말 여행이나 취미활동' },
-          { value: '사업용', emoji: '💼', description: '업무나 사업 관련 이동' }
+          { value: '출퇴근용', emoji: '🏢', description: '매일 회사 출퇴근', detail: '연비와 승차감이 중요해요' },
+          { value: '가족용', emoji: '👨‍👩‍👧‍👦', description: '가족과 함께 이동', detail: '안전성과 공간이 우선이에요' },
+          { value: '레저용', emoji: '🏖️', description: '주말 여행이나 취미', detail: '짐 공간과 주행성능이 필요해요' },
+          { value: '사업용', emoji: '💼', description: '업무나 사업 관련', detail: '브랜드 이미지와 실용성이 중요해요' }
         ]
       },
       {
         id: 'budget',
         emoji: '💰',
-        title: '두 번째 질문이에요!',
-        subtitle: '월 할부금으로 얼마 정도 생각하고 계신가요?',
+        title: '월 할부 예산을 선택해주세요',
+        subtitle: '무리 없이 지불 가능한 월 할부금은 얼마인가요?',
+        helpText: '보험료, 유지비 등을 제외한 순수 할부금만 고려해주세요',
         options: [
-          { value: '150만원 이하', emoji: '🟢', description: '부담 없는 시작' },
-          { value: '150-300만원', emoji: '🟡', description: '적당한 수준' },
-          { value: '300-500만원', emoji: '🟠', description: '여유 있는 선택' },
-          { value: '500만원 이상', emoji: '🔴', description: '프리미엄 옵션' }
+          { value: '150만원 이하', emoji: '💚', description: '부담 없는 경제적 선택', detail: '연봉 3,000만원 기준 적정 수준' },
+          { value: '150-300만원', emoji: '💙', description: '적당한 수준의 선택', detail: '연봉 4,000-6,000만원 기준' },
+          { value: '300-500만원', emoji: '🧡', description: '여유 있는 선택', detail: '연봉 7,000만원 이상 권장' },
+          { value: '500만원 이상', emoji: '💜', description: '프리미엄 옵션', detail: '고급 브랜드와 최신 옵션 가능' }
         ]
       },
       {
         id: 'priority',
         emoji: '⭐',
-        title: '마지막 질문입니다!',
-        subtitle: '차량 선택에서 가장 중요하게 생각하는 것은?',
+        title: '가장 중요한 우선순위를 선택해주세요',
+        subtitle: '차량을 선택할 때 가장 중요하게 생각하는 요소는 무엇인가요?',
+        helpText: '선택한 우선순위에 맞춰 AI가 최적의 차량을 추천해드려요',
         options: [
-          { value: '연비', emoji: '⛽', description: '기름값 절약이 중요' },
-          { value: '안전성', emoji: '🛡️', description: '안전이 최우선' },
-          { value: '디자인', emoji: '✨', description: '보기 좋은 차가 중요' },
-          { value: '브랜드', emoji: '🏆', description: '믿을 만한 브랜드' }
+          { value: '연비', emoji: '⛽', description: '경제적인 연료비', detail: '하이브리드나 경차 위주로 추천' },
+          { value: '안전성', emoji: '🛡️', description: '가족의 안전이 최우선', detail: '안전도 5성급 차량 위주로 추천' },
+          { value: '디자인', emoji: '✨', description: '보기 좋은 외관과 내장', detail: '스타일리시한 디자인 위주로 추천' },
+          { value: '브랜드', emoji: '🏆', description: '믿을 수 있는 브랜드', detail: '프리미엄 브랜드 위주로 추천' }
         ]
       }
     ];
@@ -215,41 +266,51 @@ export function UltimateCarConsultant() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-red-900 p-4 relative overflow-hidden">
-        {/* Netflix-style background overlay */}
-        <div className="absolute inset-0 bg-black/70 z-0"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 relative overflow-hidden">
+        {/* Professional background overlay */}
+        <div className="absolute inset-0 bg-white/30 z-0"></div>
 
-        <div className="max-w-4xl mx-auto relative z-10">
-          {/* Netflix-style 진행률 표시 */}
+        <div className="max-w-5xl mx-auto relative z-10">
+          {/* 전문적인 진행률 표시 */}
           <div className="text-center mb-12">
-            <div className="flex items-center justify-center space-x-4 mb-6">
-              <span className="text-6xl filter drop-shadow-lg">{currentQ.emoji}</span>
-              <div className="text-center">
-                <div className="text-lg text-red-400 font-semibold mb-2">질문 {currentQuestion + 1} / {questions.length}</div>
-                <div className="w-40 bg-gray-700 rounded-full h-3 shadow-inner">
+            <div className="flex items-center justify-center space-x-6 mb-8">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-4xl">{currentQ.emoji}</span>
+              </div>
+              <div className="text-left">
+                <div className="text-lg text-blue-600 font-semibold mb-2">단계 {currentQuestion + 1} / {questions.length}</div>
+                <div className="w-48 bg-blue-100 rounded-full h-4 shadow-inner">
                   <div
-                    className="bg-gradient-to-r from-red-600 to-red-500 h-3 rounded-full transition-all duration-700 shadow-lg"
+                    className="bg-gradient-to-r from-blue-600 to-blue-500 h-4 rounded-full transition-all duration-700 shadow-lg"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
+                <div className="text-sm text-gray-600 mt-1">{Math.round(progress)}% 완료</div>
               </div>
             </div>
 
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
-              {currentQ.title}
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <SmartText>{currentQ.title}</SmartText>
             </h2>
-            <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">{currentQ.subtitle}</p>
+            <p className="text-lg md:text-xl text-gray-700 max-w-4xl mx-auto mb-2">
+              <SmartText>{currentQ.subtitle}</SmartText>
+            </p>
+            {currentQ.helpText && (
+              <p className="text-sm text-blue-600 max-w-3xl mx-auto bg-blue-50 px-4 py-2 rounded-lg inline-block">
+                💡 <SmartText>{currentQ.helpText}</SmartText>
+              </p>
+            )}
           </div>
 
-          {/* Netflix-style 옵션 카드들 */}
+          {/* 전문적인 옵션 카드들 */}
           <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 transition-all duration-500 ${isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
             {currentQ.options.map((option, index) => (
               <Card
                 key={option.value}
-                className={`group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl border-2 backdrop-blur-sm ${
+                className={`group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl border-2 backdrop-blur-sm ${
                   userData[currentQ.id as keyof typeof userData] === option.value
-                    ? 'border-red-500 bg-red-900/50 shadow-red-500/20'
-                    : 'border-gray-600 bg-gray-900/60 hover:border-red-400 hover:bg-gray-800/70'
+                    ? 'border-blue-500 bg-blue-50 shadow-blue-500/20'
+                    : 'border-blue-200 bg-white/90 hover:border-blue-400 hover:bg-blue-50/50'
                 }`}
                 onClick={() => handleOptionSelect(option.value)}
                 style={{
@@ -258,37 +319,42 @@ export function UltimateCarConsultant() {
                 }}
               >
                 <CardContent className="p-8 text-center">
-                  <div className="text-7xl mb-6 group-hover:scale-110 transition-transform duration-300 filter drop-shadow-lg">
+                  <div className="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300">
                     {option.emoji}
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-red-400 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-blue-600 transition-colors">
                     {option.value}
                   </h3>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-3">
                     {option.description}
                   </p>
+                  {option.detail && (
+                    <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                      {option.detail}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Netflix-style 이전 답변들 요약 */}
+          {/* 전문적인 이전 답변들 요약 */}
           {currentQuestion > 0 && (
             <div className="mt-16 text-center">
-              <div className="inline-flex items-center space-x-4 bg-gray-900/80 backdrop-blur-sm rounded-full px-8 py-4 shadow-2xl border border-gray-700">
-                <span className="text-sm text-gray-300 font-medium">지금까지 선택:</span>
+              <div className="inline-flex items-center space-x-4 bg-white/90 backdrop-blur-sm rounded-full px-8 py-4 shadow-lg border border-blue-200">
+                <span className="text-sm text-gray-700 font-medium">선택하신 내용:</span>
                 {userData.usage && (
-                  <span className="bg-red-600/80 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
                     {userData.usage}
                   </span>
                 )}
                 {userData.budget && (
-                  <span className="bg-red-600/80 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
                     {userData.budget}
                   </span>
                 )}
                 {userData.priority && (
-                  <span className="bg-red-600/80 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  <span className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
                     {userData.priority}
                   </span>
                 )}
@@ -310,9 +376,9 @@ export function UltimateCarConsultant() {
                     [currentKey]: undefined
                   }));
                 }}
-                className="bg-white hover:bg-gray-50"
+                className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600 hover:border-blue-300"
               >
-                ← 이전 질문으로
+                ← 이전 단계로 돌아가기
               </Button>
             </div>
           )}
@@ -335,7 +401,7 @@ export function UltimateCarConsultant() {
     );
   };
 
-  // Phase 3: Capital One 스타일 AI 에이전트 실시간 협업
+  // Phase 3: 전문적인 AI 에이전트 실시간 협업
   const renderAnalysisPhase = () => {
     // AI 에이전트 협업 대화 초기화
     if (agentConversation.length === 0 && isLoading) {
@@ -345,23 +411,23 @@ export function UltimateCarConsultant() {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 text-gray-900 p-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold mb-4">
-              🤖 AI 전문가 실시간 협업 회의
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">
+              🤖 AI 전문가 실시간 협업 분석
             </h2>
-            <p className="text-xl text-gray-300 mb-2">
-              3명의 AI 전문가가 당신의 차량 선택을 위해 실시간으로 토론하고 있습니다
+            <p className="text-xl text-gray-700 mb-2">
+              3명의 AI 전문가가 당신의 차량 선택을 위해 실시간으로 분석하고 있습니다
             </p>
-            <div className="flex items-center justify-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-400">Live Conference</span>
+            <div className="flex items-center justify-center space-x-6">
+              <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-green-700 font-medium">실시간 분석</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-blue-400">Real-time Analysis</span>
+              <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-blue-700 font-medium">전문가 협업</span>
               </div>
             </div>
           </div>
@@ -369,56 +435,56 @@ export function UltimateCarConsultant() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* 왼쪽: AI 에이전트 프로필 */}
             <div className="space-y-4">
-              <h3 className="text-xl font-bold text-white mb-4">🧠 참여 전문가</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">🧠 참여 전문가</h3>
 
-              <Card className="bg-blue-900/20 border-blue-500/30">
+              <Card className="bg-blue-50/80 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                       <Car className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-blue-300">차량 전문가 AI</h4>
-                      <p className="text-xs text-gray-400">85,320대 데이터 분석</p>
+                      <h4 className="font-bold text-blue-700">차량 전문가 AI</h4>
+                      <p className="text-xs text-gray-600">85,000+ 매물 데이터 분석</p>
                       <div className="flex items-center space-x-1 mt-1">
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <span className="text-xs text-green-400">발언 중...</span>
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-xs text-green-600 font-medium">분석 중</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-green-900/20 border-green-500/30">
+              <Card className="bg-green-50/80 border-green-200 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                       <TrendingUp className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-green-300">금융 전문가 AI</h4>
-                      <p className="text-xs text-gray-400">XGBoost 예측 모델</p>
+                      <h4 className="font-bold text-green-700">금융 전문가 AI</h4>
+                      <p className="text-xs text-gray-600">LSTM+XGBoost 예측 모델</p>
                       <div className="flex items-center space-x-1 mt-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-yellow-400">분석 중...</span>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-blue-600 font-medium">계산 중</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-purple-900/20 border-purple-500/30">
+              <Card className="bg-purple-50/80 border-purple-200 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
                       <MessageSquare className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-purple-300">리뷰 분석가 AI</h4>
-                      <p className="text-xs text-gray-400">KoBERT 감정분석</p>
+                      <h4 className="font-bold text-purple-700">리뷰 분석가 AI</h4>
+                      <p className="text-xs text-gray-600">KoBERT 한국어 감정분석</p>
                       <div className="flex items-center space-x-1 mt-1">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                        <span className="text-xs text-blue-400">대기 중...</span>
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <span className="text-xs text-orange-600 font-medium">대기 중</span>
                       </div>
                     </div>
                   </div>
@@ -426,25 +492,25 @@ export function UltimateCarConsultant() {
               </Card>
 
               {/* 합의 상태 */}
-              <Card className="bg-gray-800/50 border-gray-600/30">
+              <Card className="bg-white/90 border-gray-200 shadow-sm">
                 <CardContent className="p-4">
-                  <h4 className="font-bold text-white mb-3">📊 협업 진행 상황</h4>
+                  <h4 className="font-bold text-gray-900 mb-3">📊 분석 진행 상황</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-400">데이터 수집</span>
-                      <span className="text-green-400">✓</span>
+                      <span className="text-sm text-gray-600">데이터 수집</span>
+                      <span className="text-green-600">✓</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-400">전문가 분석</span>
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                      <span className="text-sm text-gray-600">전문가 분석</span>
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-400">의견 조율</span>
-                      <span className="text-gray-500">대기</span>
+                      <span className="text-sm text-gray-600">의견 조율</span>
+                      <span className="text-gray-400">대기</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-400">최종 합의</span>
-                      <span className="text-gray-500">대기</span>
+                      <span className="text-sm text-gray-600">최종 합의</span>
+                      <span className="text-gray-400">대기</span>
                     </div>
                   </div>
                 </CardContent>
@@ -453,15 +519,15 @@ export function UltimateCarConsultant() {
 
             {/* 중앙: 실시간 협업 대화창 */}
             <div className="lg:col-span-2">
-              <Card className="bg-gray-900/50 border-gray-600/30 h-[600px] flex flex-col">
-                <CardHeader className="border-b border-gray-600/30">
+              <Card className="bg-white/95 border-gray-200 h-[600px] flex flex-col shadow-lg">
+                <CardHeader className="border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-white flex items-center space-x-2">
-                      <span>💬 AI 전문가 협업 회의실</span>
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <CardTitle className="text-gray-900 flex items-center space-x-2">
+                      <span>💬 AI 전문가 분석 진행 상황</span>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     </CardTitle>
-                    <div className="text-sm text-gray-400">
-                      참여자: 3명 | 상태: 활성
+                    <div className="text-sm text-gray-600">
+                      참여자: 3명 | 상태: 분석 중
                     </div>
                   </div>
                 </CardHeader>
@@ -537,23 +603,23 @@ export function UltimateCarConsultant() {
     );
   };
 
-  // Phase 4: Results Display - Netflix Style
+  // Phase 4: Results Display - Professional Style
   const renderResultsPhase = () => (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-red-900 p-4 relative overflow-hidden">
-      {/* Netflix-style background overlay */}
-      <div className="absolute inset-0 bg-black/60 z-0"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 relative overflow-hidden">
+      {/* Professional background overlay */}
+      <div className="absolute inset-0 bg-white/40 z-0"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-12">
-          <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
-            AI 전문가 분석 완료
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            🎉 전문 분석 완료
           </h2>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            3명의 AI 전문가가 당신을 위한 완벽한 분석을 완료했습니다
+          <p className="text-xl md:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
+            3명의 AI 전문가가 당신만을 위한 신뢰할 수 있는 분석을 완료했습니다
           </p>
-          <div className="mt-6 inline-flex items-center space-x-2 bg-red-600/20 border border-red-500/30 rounded-full px-6 py-3 backdrop-blur-sm">
-            <CheckCircle className="w-5 h-5 text-red-400" />
-            <span className="text-red-300 font-semibold">분석 완료</span>
+          <div className="mt-6 inline-flex items-center space-x-2 bg-green-50 border border-green-200 rounded-full px-6 py-3 shadow-sm">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="text-green-700 font-semibold">분석 완료</span>
           </div>
         </div>
 
@@ -696,7 +762,7 @@ export function UltimateCarConsultant() {
                   <span className="font-semibold text-blue-800">차량 전문가</span>
                 </div>
                 <p className="text-sm text-blue-700">
-                  "{userData.usage}" 용도와 "{userData.priority}" 우선순위를 고려할 때,
+                  &ldquo;{userData.usage}&rdquo; 용도와 &ldquo;{userData.priority}&rdquo; 우선순위를 고려할 때,
                   아반떼 CN7이 가장 적합합니다. 연비와 안전성이 뛰어나며 가격 대비 만족도가 높습니다.
                 </p>
               </div>

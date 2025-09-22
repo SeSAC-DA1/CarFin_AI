@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         throw new Error(`FastAPI Error: ${response.statusText}`);
       }
 
-      let recommendations: RecommendationResponse = await response.json();
+      const recommendations: RecommendationResponse = await response.json();
 
       // FastAPI 응답을 Next.js 형식으로 변환
       if (recommendations.recommendations) {

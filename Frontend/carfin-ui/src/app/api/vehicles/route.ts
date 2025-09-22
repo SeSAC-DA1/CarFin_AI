@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/database/db';
 
 export interface RealVehicleData {
   vehicleid: string;
@@ -76,148 +77,68 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const category = searchParams.get('category') || 'general';
 
-    // 🚀 울트라띵크 모드: 실제 엔카 기반 차량 데이터 (85,320+ 건)
-    console.log('🚀 실제 차량 데이터베이스 접근:', {
+    // 🚀 실제 PostgreSQL RDS 데이터베이스 연결
+    console.log('🚀 실제 PostgreSQL 데이터베이스 접근:', {
       category,
       limit,
       timestamp: new Date().toISOString()
     });
 
-    // 실제 엔카 데이터 기반 차량 정보 (AWS RDS에서 가져온 실제 데이터)
-    const realVehicleDatabase = [
-      {
-        vehicleid: "V001",
-        manufacturer: "현대",
-        model: "아반떼",
-        modelyear: 2022,
-        price: 2850,
-        distance: 35000,
-        fueltype: "가솔린",
-        cartype: "sedan",
-        location: "서울 강남구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845123",
-        photo: "/images/cars/avante_2022.jpg"
-      },
-      {
-        vehicleid: "V002",
-        manufacturer: "기아",
-        model: "K5",
-        modelyear: 2021,
-        price: 3200,
-        distance: 42000,
-        fueltype: "하이브리드",
-        cartype: "sedan",
-        location: "경기 수원시",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845124",
-        photo: "/images/cars/k5_2021.jpg"
-      },
-      {
-        vehicleid: "V003",
-        manufacturer: "제네시스",
-        model: "G70",
-        modelyear: 2023,
-        price: 4200,
-        distance: 15000,
-        fueltype: "가솔린",
-        cartype: "sedan",
-        location: "서울 서초구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845125",
-        photo: "/images/cars/g70_2023.jpg"
-      },
-      {
-        vehicleid: "V004",
-        manufacturer: "현대",
-        model: "투싼",
-        modelyear: 2022,
-        price: 3500,
-        distance: 28000,
-        fueltype: "가솔린",
-        cartype: "suv",
-        location: "경기 안양시",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845126",
-        photo: "/images/cars/tucson_2022.jpg"
-      },
-      {
-        vehicleid: "V005",
-        manufacturer: "BMW",
-        model: "320d",
-        modelyear: 2021,
-        price: 4800,
-        distance: 38000,
-        fueltype: "디젤",
-        cartype: "sedan",
-        location: "서울 강남구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845127",
-        photo: "/images/cars/bmw_320d_2021.jpg"
-      },
-      {
-        vehicleid: "V006",
-        manufacturer: "메르세데스-벤츠",
-        model: "C220d",
-        modelyear: 2020,
-        price: 5200,
-        distance: 45000,
-        fueltype: "디젤",
-        cartype: "sedan",
-        location: "서울 송파구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845128",
-        photo: "/images/cars/benz_c220d_2020.jpg"
-      },
-      {
-        vehicleid: "V007",
-        manufacturer: "테슬라",
-        model: "Model 3",
-        modelyear: 2022,
-        price: 5800,
-        distance: 22000,
-        fueltype: "전기",
-        cartype: "sedan",
-        location: "경기 성남시",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845129",
-        photo: "/images/cars/tesla_model3_2022.jpg"
-      },
-      {
-        vehicleid: "V008",
-        manufacturer: "기아",
-        model: "쏘렌토",
-        modelyear: 2021,
-        price: 3800,
-        distance: 31000,
-        fueltype: "하이브리드",
-        cartype: "suv",
-        location: "인천 연수구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845130",
-        photo: "/images/cars/sorento_2021.jpg"
-      },
-      {
-        vehicleid: "V009",
-        manufacturer: "현대",
-        model: "그랜저",
-        modelyear: 2022,
-        price: 4100,
-        distance: 18000,
-        fueltype: "가솔린",
-        cartype: "sedan",
-        location: "서울 마포구",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845131",
-        photo: "/images/cars/grandeur_2022.jpg"
-      },
-      {
-        vehicleid: "V010",
-        manufacturer: "아우디",
-        model: "A4",
-        modelyear: 2021,
-        price: 4600,
-        distance: 26000,
-        fueltype: "가솔린",
-        cartype: "sedan",
-        location: "경기 고양시",
-        detailurl: "https://www.encar.com/dc/dc_cardetailview.do?carid=37845132",
-        photo: "/images/cars/audi_a4_2021.jpg"
-      }
-    ];
+    // 실제 데이터베이스에서 차량 데이터 조회
+    const sqlQuery = `
+      SELECT
+        v.id as vehicleid,
+        b.name as manufacturer,
+        m.name as model,
+        v.year as modelyear,
+        v.price,
+        v.mileage as distance,
+        v.fuel_type as fueltype,
+        v.body_type as cartype,
+        v.region as location,
+        v.features,
+        v.listing_date,
+        v.views_count,
+        v.value_score,
+        v.popularity_score,
+        v.accident_history,
+        v.flood_damage,
+        v.owner_count,
+        v.safety_rating,
+        v.fuel_efficiency
+      FROM vehicles v
+      JOIN brands b ON v.brand_id = b.id
+      JOIN models m ON v.model_id = m.id
+      WHERE v.is_available = true
+      ORDER BY v.value_score DESC, v.popularity_score DESC
+      LIMIT $1
+    `;
 
-    const vehicles = realVehicleDatabase.slice(0, limit);
+    const result = await query(sqlQuery, [limit]);
+    const vehicles = result.rows.map((row: any) => ({
+      vehicleid: row.vehicleid.toString(),
+      manufacturer: row.manufacturer,
+      model: row.model,
+      modelyear: row.modelyear,
+      price: row.price,
+      distance: row.distance,
+      fueltype: row.fueltype,
+      cartype: row.cartype,
+      location: row.location,
+      features: Array.isArray(row.features) ? row.features : [],
+      detailurl: `https://www.encar.com/dc/dc_cardetailview.do?carid=${row.vehicleid}`,
+      photo: `/images/cars/${row.manufacturer}_${row.model}_${row.modelyear}.jpg`,
+      // 추가 실제 데이터
+      listing_date: row.listing_date,
+      views_count: row.views_count,
+      value_score: row.value_score,
+      popularity_score: row.popularity_score,
+      accident_history: row.accident_history,
+      flood_damage: row.flood_damage,
+      owner_count: row.owner_count,
+      safety_rating: row.safety_rating,
+      fuel_efficiency: row.fuel_efficiency
+    }));
 
     // 🔍 리스 매물 검증 및 필터링
     const processedVehicles = vehicles.map((vehicle: any) => {
@@ -243,12 +164,18 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // 총 레코드 수 조회
+    const countResult = await query('SELECT COUNT(*) as total FROM vehicles WHERE is_available = true');
+    const totalRecords = parseInt(countResult.rows[0].total);
+
     return NextResponse.json({
       success: true,
       vehicles: processedVehicles,
       totalCount: processedVehicles.length,
-      source: 'AWS PostgreSQL RDS + Google Cloud Run',
+      totalRecords: totalRecords,
+      source: 'PostgreSQL RDS (실제 85,000+ 매물 데이터)',
       leaseDetectionEnabled: true,
+      queryExecuted: true,
       timestamp: new Date().toISOString()
     });
 

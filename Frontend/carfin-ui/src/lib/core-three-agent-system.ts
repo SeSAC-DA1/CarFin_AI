@@ -420,38 +420,12 @@ ${JSON.stringify(searchResults, null, 2)}
     } catch (error) {
       console.error('Backend API 호출 실패:', error);
 
-      // Fallback: Mock 데이터 반환
-      console.log('📊 Fallback - Mock 데이터 사용');
-      const mockVehicles: VehicleData[] = [
-        {
-          id: 'db_001',
-          brand: '현대',
-          model: '아반떼',
-          year: 2022,
-          price: criteria.budget ? Math.min(criteria.budget * 0.9, 2800) : 2800,
-          mileage: 15000,
-          fuel_type: criteria.fuelType || '가솔린',
-          location: '서울 강남구',
-          dealer_info: { name: '강남모터스', rating: 4.5 },
-          features: ['후방카메라', '블루투스', '크루즈컨트롤'],
-          inspection_grade: '1급'
-        },
-        {
-          id: 'db_002',
-          brand: '기아',
-          model: 'K5',
-          year: 2021,
-          price: criteria.budget ? Math.min(criteria.budget * 0.95, 3200) : 3200,
-          mileage: 28000,
-          fuel_type: '하이브리드',
-          location: '경기 성남시',
-          dealer_info: { name: 'K모터스', rating: 4.3 },
-          features: ['선루프', '통풍시트', '어댑티브크루즈'],
-          inspection_grade: '2급'
-        }
-      ];
-
-      return mockVehicles;
+      // 🚀 울트라띵크 모드: Mock 데이터 사용 금지
+      // 무조건 실제 PostgreSQL RDS 데이터만 사용
+      throw new Error(
+        `실제 PostgreSQL 데이터베이스 연결 실패: ${error}. ` +
+        'Mock 데이터 사용이 금지되어 있습니다. 데이터베이스 연결을 확인하세요.'
+      );
     }
   }
 

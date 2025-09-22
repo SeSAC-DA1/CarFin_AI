@@ -330,8 +330,8 @@ ${JSON.stringify(currentData, null, 2)}
    */
   async searchFinancialProducts(vehiclePrice: number, userProfile: Partial<UserProfile>): Promise<FinancialOption[]> {
     if (!this.googleSearchApiKey || !this.customSearchEngineId) {
-      console.log('Google Search API not configured, using default financial products');
-      return this.getMockFinancialOptions();
+      console.warn('Google Search API not configured, returning default financial options');
+      return this.getDefaultFinancialOptions(vehiclePrice, userProfile);
     }
 
     try {

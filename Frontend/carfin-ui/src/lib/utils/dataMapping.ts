@@ -85,7 +85,7 @@ export function mapOnboardingToUserData(
 
   // 브랜드 선호도에 따른 우선순위 계산
   const calculatePriorities = (brands: string[]) => {
-    let priorities = {
+    const priorities = {
       price: 0.4,           // 기본값
       fuel_efficiency: 0.3,
       safety: 0.2,

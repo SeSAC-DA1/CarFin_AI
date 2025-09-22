@@ -192,7 +192,7 @@ const RealVehicleCard = memo(function RealVehicleCard({
             onTouchEnd={handleLikeClick}
             className={`
               p-2 rounded-full transition-all duration-200 backdrop-blur-sm
-              ${isMobile ? 'p-3' : 'p-2'} ${/* 모바일에서 터치 영역 확대 */}
+              ${isMobile ? 'p-3' : 'p-2'} /* 모바일에서 터치 영역 확대 */
               ${isLiked ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'}
               active:scale-90 transform
             `}
