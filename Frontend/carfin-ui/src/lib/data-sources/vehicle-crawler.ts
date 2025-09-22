@@ -100,12 +100,18 @@ class VehicleDataCrawler {
   }
 
   /**
-   * 엔카 데이터 크롤링 (실제 API 연동 시뮬레이션)
+   * 🚀 울트라띵크 모드: Mock 데이터 완전 제거
+   * "무조건 실제 postgre aws rdb에 있는 데이터만" 사용
    */
   private async crawlEncar(params: VehicleSearchParams): Promise<import('../realistic-agents').VehicleListing[]> {
-    // 실제 구현 시 엔카 API 또는 웹 스크래핑
-    // 현재는 현실적인 시뮬레이션 데이터 반환
+    // 🚨 Mock 데이터 사용 금지 - AWS PostgreSQL RDB 전용
+    throw new Error(
+      '🚀 울트라띵크 모드: Mock 엔카 데이터 사용 금지. ' +
+      '무조건 실제 PostgreSQL AWS RDB 데이터만 사용해야 합니다. ' +
+      'Google Cloud Run API (carfin-mcp-983974250633.asia-northeast1.run.app)를 통해 실제 데이터를 가져오세요.'
+    );
 
+    // Mock 데이터 완전 제거됨 - 아래 코드는 더 이상 사용되지 않음
     const mockEncarData: import('../realistic-agents').VehicleListing[] = [
       {
         id: `encar_${Date.now()}_1`,

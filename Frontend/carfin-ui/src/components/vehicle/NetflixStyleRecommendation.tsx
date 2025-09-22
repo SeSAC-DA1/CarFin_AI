@@ -8,6 +8,7 @@ import { usePersonalizedLearning } from '@/hooks/usePersonalizedLearning';
 import { userBehaviorTracker, VehicleDetails } from '@/lib/user-behavior-tracker';
 import { Vehicle, VehicleFeedback } from '@/types';
 import { AILearningMonitor } from '@/components/debug/AILearningMonitor';
+import { LeaseVehicleFilter, LeaseFilterState } from '@/components/filters/LeaseVehicleFilter';
 import {
   Heart, X, DollarSign, Star, Flame, Car, Fuel, Calendar, MapPin,
   TrendingUp, Zap, ArrowRight, Sparkles, Shield, Award, CheckCircle,
@@ -533,6 +534,23 @@ export const NetflixStyleRecommendation: React.FC<NetflixStyleRecommendationProp
   const [selectedVehicles, setSelectedVehicles] = useState<Vehicle[]>([]);
   const [userFeedback, setUserFeedback] = useState<VehicleFeedback[]>([]);
 
+  // 🚀 울트라띵크 모드: 리스/일반 매물 필터링 상태
+  const [leaseFilterState, setLeaseFilterState] = useState<LeaseFilterState>({
+    showLeaseVehicles: true,
+    showRegularVehicles: true,
+    suspiciousOnly: false,
+    priceRangeFilter: 'all',
+    brandFilter: []
+  });
+
+  // 리스 매물 통계 (임시 데이터, 실제로는 API에서 가져와야 함)
+  const [leaseStats, setLeaseStats] = useState({
+    totalVehicles: 0,
+    leaseVehicles: 0,
+    regularVehicles: 0,
+    suspiciousVehicles: 0
+  });
+
   const handleVehicleFeedback = (vehicleId: string, feedbackType: VehicleFeedback['feedbackType']) => {
     console.log('🧠 AI 학습 시작:', { vehicleId, feedbackType });
 
@@ -669,6 +687,15 @@ export const NetflixStyleRecommendation: React.FC<NetflixStyleRecommendationProp
           </div>
         </div>
       )}
+
+      {/* 🚀 울트라띵크 모드: 리스/일반 매물 필터링 */}
+      <div className="container mx-auto px-6 mb-8">
+        <LeaseVehicleFilter
+          onFilterChange={setLeaseFilterState}
+          leaseStats={leaseStats}
+          className="mb-6"
+        />
+      </div>
 
       {/* 카테고리별 섹션들 */}
       <div className="container mx-auto px-6">

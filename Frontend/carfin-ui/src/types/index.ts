@@ -203,7 +203,7 @@ export interface BaseComponentProps {
 }
 
 // 앱 페이즈 타입
-export type AppPhase = 'landing' | 'signup' | 'chat' | 'grid' | 'analysis' | 'finance';
+export type AppPhase = 'landing' | 'signup' | 'chat' | 'ai-collaboration' | 'grid' | 'analysis' | 'finance' | 'service-complete';
 
 // 로딩 상태 타입
 export interface LoadingState {

@@ -13,9 +13,10 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import uvicorn
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import websockets
 
 # 로깅 설정
 logging.basicConfig(
@@ -51,6 +52,75 @@ class AgentResult:
     confidence: float
     timestamp: datetime
 
+@dataclass
+class AgentProgressUpdate:
+    agent_name: str
+    status: str  # "starting", "analyzing", "completed", "error"
+    progress: float  # 0.0 - 1.0
+    message: str
+    data: Optional[Dict[str, Any]] = None
+    timestamp: datetime = None
+
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+class WebSocketManager:
+    """WebSocket 연결 관리 클래스"""
+
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+        self.session_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, session_id: str = "default"):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        if session_id not in self.session_connections:
+            self.session_connections[session_id] = []
+        self.session_connections[session_id].append(websocket)
+        logger.info(f"🔗 WebSocket 연결: 세션 {session_id}")
+
+    def disconnect(self, websocket: WebSocket, session_id: str = "default"):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+        if session_id in self.session_connections and websocket in self.session_connections[session_id]:
+            self.session_connections[session_id].remove(websocket)
+        logger.info(f"🔌 WebSocket 연결 해제: 세션 {session_id}")
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        try:
+            await websocket.send_text(json.dumps(message))
+        except Exception as e:
+            logger.error(f"❌ 개별 메시지 전송 실패: {e}")
+
+    async def broadcast_to_session(self, message: dict, session_id: str = "default"):
+        if session_id in self.session_connections:
+            disconnected = []
+            for connection in self.session_connections[session_id]:
+                try:
+                    await connection.send_text(json.dumps(message))
+                except Exception as e:
+                    logger.error(f"❌ 세션 브로드캐스트 실패: {e}")
+                    disconnected.append(connection)
+
+            # 연결 끊어진 WebSocket 정리
+            for conn in disconnected:
+                self.disconnect(conn, session_id)
+
+    async def broadcast_all(self, message: dict):
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                logger.error(f"❌ 전체 브로드캐스트 실패: {e}")
+                disconnected.append(connection)
+
+        # 연결 끊어진 WebSocket 정리
+        for conn in disconnected:
+            if conn in self.active_connections:
+                self.active_connections.remove(conn)
+
 class CarFinMCPServer:
     """CarFin MCP 서버 - 멀티에이전트 협업 오케스트레이터"""
 
@@ -74,6 +144,9 @@ class CarFinMCPServer:
         self.tools = {}
         self.agent_pool = {}
         self.session_contexts = {}
+
+        # WebSocket 관리자
+        self.websocket_manager = WebSocketManager()
 
         # 라우터 설정
         self._setup_routes()
@@ -176,6 +249,49 @@ class CarFinMCPServer:
                     "execution_time": execution_time,
                     "timestamp": datetime.now().isoformat()
                 }
+
+        @self.app.websocket("/ws/{session_id}")
+        async def websocket_endpoint(websocket: WebSocket, session_id: str):
+            """실시간 에이전트 협업 과정 WebSocket"""
+            await self.websocket_manager.connect(websocket, session_id)
+
+            # 연결 성공 메시지 전송
+            await self.websocket_manager.send_personal_message({
+                "type": "connection_established",
+                "session_id": session_id,
+                "message": "실시간 에이전트 협업 과정 시각화 연결 완료",
+                "timestamp": datetime.now().isoformat()
+            }, websocket)
+
+            try:
+                while True:
+                    # 클라이언트로부터 메시지 수신 대기
+                    data = await websocket.receive_text()
+                    message = json.loads(data)
+
+                    if message.get("type") == "ping":
+                        await self.websocket_manager.send_personal_message({
+                            "type": "pong",
+                            "timestamp": datetime.now().isoformat()
+                        }, websocket)
+
+                    elif message.get("type") == "start_recommendation":
+                        # 추천 프로세스 시작 - 실시간 시각화와 함께
+                        await self._handle_realtime_recommendation(
+                            message.get("user_profile", {}),
+                            session_id
+                        )
+
+            except WebSocketDisconnect:
+                self.websocket_manager.disconnect(websocket, session_id)
+            except Exception as e:
+                logger.error(f"❌ WebSocket 오류: {e}")
+                self.websocket_manager.disconnect(websocket, session_id)
+
+        @self.app.post("/mcp/recommend/realtime")
+        async def start_realtime_recommendation(request: RecommendationRequest, session_id: str = "default"):
+            """실시간 시각화와 함께 추천 시작"""
+            return await self._handle_realtime_recommendation(request.user_profile, session_id)
 
     async def _execute_agent(self, agent_name: str, user_profile: Dict[str, Any]) -> AgentResult:
         """개별 에이전트 실행"""
@@ -603,6 +719,240 @@ class CarFinMCPServer:
             })
 
         return analyses
+
+    async def _handle_realtime_recommendation(self, user_profile: Dict[str, Any], session_id: str):
+        """실시간 시각화와 함께 추천 처리"""
+        start_time = datetime.now()
+
+        try:
+            # 1. 추천 시작 알림
+            await self.websocket_manager.broadcast_to_session({
+                "type": "recommendation_started",
+                "message": "3개 AI 에이전트 협업 추천 시작",
+                "agents": ["차량전문가", "금융분석가", "리뷰분석가"],
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            # 2. 각 에이전트 실행 상태 실시간 업데이트
+            agent_names = ["vehicle_expert", "finance_expert", "gemini_multi_agent"]
+            agent_display_names = ["차량전문가", "금융분석가", "리뷰분석가"]
+
+            agent_tasks = []
+            for i, agent_name in enumerate(agent_names):
+                # 에이전트 시작 알림
+                await self._send_agent_progress(
+                    session_id,
+                    agent_display_names[i],
+                    "starting",
+                    0.0,
+                    f"{agent_display_names[i]} 분석 시작"
+                )
+
+                # 에이전트 비동기 실행
+                task = self._execute_realtime_agent(agent_name, user_profile, session_id, agent_display_names[i])
+                agent_tasks.append(task)
+
+            # 3. NCF 모델 실행 시작 알림
+            await self.websocket_manager.broadcast_to_session({
+                "type": "ncf_started",
+                "message": "NCF 딥러닝 모델 추론 시작",
+                "model": "Neural Collaborative Filtering",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            # 4. NCF 실행
+            ncf_task = self._execute_realtime_ncf(user_profile, session_id)
+
+            # 5. 모든 결과 수집
+            agent_results = await asyncio.gather(*agent_tasks, return_exceptions=True)
+            ncf_result = await ncf_task
+
+            # 6. 결과 융합 시작 알림
+            await self.websocket_manager.broadcast_to_session({
+                "type": "fusion_started",
+                "message": "에이전트 결과 융합 및 최종 추천 생성",
+                "fusion_method": "가중평균 기반 멀티모달 융합",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            # 7. 결과 융합
+            final_recommendation = await self._fuse_recommendations_realtime(
+                agent_results, ncf_result, user_profile, session_id
+            )
+
+            execution_time = (datetime.now() - start_time).total_seconds()
+
+            # 8. 최종 결과 전송
+            await self.websocket_manager.broadcast_to_session({
+                "type": "recommendation_completed",
+                "message": "멀티 에이전트 협업 추천 완료",
+                "recommendations": final_recommendation,
+                "execution_time": execution_time,
+                "agents_contribution": {
+                    name: result.confidence if isinstance(result, AgentResult) else 0.0
+                    for name, result in zip(agent_display_names, agent_results)
+                },
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return {
+                "success": True,
+                "recommendations": final_recommendation,
+                "execution_time": execution_time,
+                "realtime_visualization": True
+            }
+
+        except Exception as e:
+            logger.error(f"❌ 실시간 추천 처리 실패: {e}")
+
+            await self.websocket_manager.broadcast_to_session({
+                "type": "recommendation_error",
+                "message": f"추천 처리 중 오류 발생: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return {
+                "success": False,
+                "error": str(e),
+                "execution_time": (datetime.now() - start_time).total_seconds()
+            }
+
+    async def _execute_realtime_agent(self, agent_name: str, user_profile: Dict[str, Any], session_id: str, display_name: str) -> AgentResult:
+        """실시간 업데이트와 함께 에이전트 실행"""
+        start_time = datetime.now()
+
+        try:
+            # 진행률 업데이트
+            await self._send_agent_progress(session_id, display_name, "analyzing", 0.3, f"{display_name} 데이터 분석 중")
+
+            # 실제 에이전트 실행
+            if agent_name == "vehicle_expert":
+                result = await self._mock_vehicle_expert(user_profile)
+            elif agent_name == "finance_expert":
+                result = await self._mock_finance_expert(user_profile)
+            elif agent_name == "gemini_multi_agent":
+                result = await self._mock_gemini_agent(user_profile)
+            else:
+                raise ValueError(f"Unknown agent: {agent_name}")
+
+            execution_time = (datetime.now() - start_time).total_seconds()
+
+            # 완료 업데이트
+            await self._send_agent_progress(
+                session_id,
+                display_name,
+                "completed",
+                1.0,
+                f"{display_name} 분석 완료 - {len(result.get('recommendations', []))}개 차량 추천"
+            )
+
+            return AgentResult(
+                agent_name=display_name,
+                result=result,
+                execution_time=execution_time,
+                confidence=result.get("confidence", 0.8),
+                timestamp=datetime.now()
+            )
+
+        except Exception as e:
+            logger.error(f"❌ 실시간 에이전트 '{agent_name}' 실행 실패: {e}")
+
+            await self._send_agent_progress(session_id, display_name, "error", 0.0, f"{display_name} 오류: {str(e)}")
+
+            return AgentResult(
+                agent_name=display_name,
+                result={"error": str(e)},
+                execution_time=(datetime.now() - start_time).total_seconds(),
+                confidence=0.0,
+                timestamp=datetime.now()
+            )
+
+    async def _execute_realtime_ncf(self, user_profile: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """실시간 업데이트와 함께 NCF 실행"""
+        try:
+            # NCF 진행률 업데이트
+            await self.websocket_manager.broadcast_to_session({
+                "type": "ncf_progress",
+                "progress": 0.5,
+                "message": "딥러닝 모델 추론 중...",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            # 실제 NCF 실행
+            result = await self._execute_ncf_prediction(user_profile)
+
+            # NCF 완료 알림
+            await self.websocket_manager.broadcast_to_session({
+                "type": "ncf_completed",
+                "progress": 1.0,
+                "message": f"NCF 모델 추론 완료 - {len(result.get('predictions', []))}개 예측",
+                "confidence": result.get("confidence", 0.85),
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ 실시간 NCF 실행 실패: {e}")
+
+            await self.websocket_manager.broadcast_to_session({
+                "type": "ncf_error",
+                "message": f"NCF 모델 오류: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return {"error": str(e), "confidence": 0.0}
+
+    async def _fuse_recommendations_realtime(self, agent_results: List[AgentResult], ncf_result: Dict[str, Any], user_profile: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """실시간 업데이트와 함께 결과 융합"""
+        try:
+            # 융합 진행률 업데이트
+            await self.websocket_manager.broadcast_to_session({
+                "type": "fusion_progress",
+                "progress": 0.5,
+                "message": "에이전트 결과 가중평균 융합 중...",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            # 기존 융합 로직 실행
+            result = await self._fuse_recommendations(agent_results, ncf_result, user_profile)
+
+            # 융합 완료 알림
+            await self.websocket_manager.broadcast_to_session({
+                "type": "fusion_completed",
+                "progress": 1.0,
+                "message": f"최종 추천 생성 완료 - {len(result.get('vehicles', []))}개 차량",
+                "fusion_details": {
+                    "method": result.get("fusion_method", "weighted_average"),
+                    "contributions": result.get("agent_contributions", {}),
+                    "ncf_weight": result.get("ncf_contribution", 0.0)
+                },
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ 실시간 결과 융합 실패: {e}")
+
+            await self.websocket_manager.broadcast_to_session({
+                "type": "fusion_error",
+                "message": f"결과 융합 오류: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }, session_id)
+
+            return {"error": str(e), "vehicles": []}
+
+    async def _send_agent_progress(self, session_id: str, agent_name: str, status: str, progress: float, message: str):
+        """에이전트 진행률 업데이트 전송"""
+        await self.websocket_manager.broadcast_to_session({
+            "type": "agent_progress",
+            "agent_name": agent_name,
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }, session_id)
 
     def register_tool(self, name: str, func):
         """MCP Tool 등록"""
