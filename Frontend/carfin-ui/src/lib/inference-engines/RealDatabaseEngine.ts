@@ -40,6 +40,10 @@ export interface VehicleData {
   ownerCount: number;
   valueScore: number;
   popularityScore: number;
+  photo?: string; // 차량 이미지 URL
+  detailUrl?: string; // 실제 매물 상세 페이지 URL
+  vehicleid?: string; // 차량 ID (실제 데이터베이스 기본키)
+  manufacturer?: string; // 제조사 (brand와 동일하지만 데이터베이스 호환성)
 }
 
 export interface InferenceResult {
@@ -60,73 +64,68 @@ export class DatabaseVehicleExpertEngine {
     const conditions: string[] = [];
     const orderByFields: string[] = [];
 
-    // 기본 조건: 판매 가능한 차량만
-    conditions.push('v.is_available = true');
+    // 예산 조건 (실제 컬럼명: price, 단위: 만원)
+    conditions.push(`price BETWEEN ${userData.budget[0]} AND ${userData.budget[1]}`);
 
-    // 예산 조건
-    conditions.push(`v.price BETWEEN ${userData.budget[0]} AND ${userData.budget[1]}`);
-
-    // 차종 조건
+    // 차종 조건 (실제 컬럼명: cartype)
     if (userData.bodyType) {
-      conditions.push(`v.body_type = '${userData.bodyType}'`);
+      const carTypeMap = {
+        'sedan': '세단',
+        'suv': 'SUV',
+        'hatchback': '해치백',
+        'coupe': '쿠페'
+      };
+      const koreanCarType = carTypeMap[userData.bodyType as keyof typeof carTypeMap] || userData.bodyType;
+      conditions.push(`cartype LIKE '%${koreanCarType}%'`);
     }
 
-    // 연료 타입 조건
+    // 연료 타입 조건 (실제 컬럼명: fueltype)
     if (userData.fuelType) {
-      conditions.push(`v.fuel_type = '${userData.fuelType}'`);
+      const fuelTypeMap = {
+        'gasoline': '가솔린',
+        'diesel': '디젤',
+        'hybrid': '하이브리드',
+        'electric': '전기'
+      };
+      const koreanFuelType = fuelTypeMap[userData.fuelType as keyof typeof fuelTypeMap] || userData.fuelType;
+      conditions.push(`fueltype LIKE '%${koreanFuelType}%'`);
     }
 
-    // 가족 구성에 따른 좌석 수 (최소 조건)
-    const minSeats = userData.familySize <= 2 ? 2 : Math.min(userData.familySize, 8);
-    conditions.push(`v.seating_capacity >= ${minSeats}`);
-
-    // 지역 선호도 (같은 지역 우선, 다른 지역도 포함)
+    // 지역 조건 (실제 컬럼명: location)
     if (userData.region) {
-      orderByFields.push(`CASE WHEN v.region = '${userData.region}' THEN 0 ELSE 1 END`);
+      orderByFields.push(`CASE WHEN location LIKE '%${userData.region}%' THEN 0 ELSE 1 END`);
     }
 
     // 우선순위에 따른 정렬
-    if (userData.priorities.safety > 0.3) {
-      orderByFields.push('v.safety_rating DESC');
-    }
-    if (userData.priorities.fuel_efficiency > 0.3) {
-      orderByFields.push('v.fuel_efficiency DESC');
-    }
     if (userData.priorities.price > 0.3) {
-      orderByFields.push('v.price ASC');
+      orderByFields.push('price ASC');
     }
     if (userData.priorities.performance > 0.2) {
-      orderByFields.push('v.year DESC'); // 최신 연도를 성능 지표로
+      orderByFields.push('modelyear DESC'); // 최신 연도를 성능 지표로
     }
 
-    // 기본 정렬: 가성비 점수와 인기도 점수
-    orderByFields.push('v.value_score DESC', 'v.popularity_score DESC');
+    // 기본 정렬: 연식, 주행거리, 가격 순
+    orderByFields.push('modelyear DESC', 'distance ASC', 'price ASC');
 
     const query = `
 SELECT
-    v.id,
-    b.name as brand,
-    m.name as model,
-    v.year,
-    v.price,
-    v.mileage,
-    v.fuel_type,
-    v.body_type,
-    v.seating_capacity,
-    v.fuel_efficiency,
-    v.safety_rating,
-    v.features,
-    v.region,
-    v.dealer_type,
-    v.accident_history,
-    v.owner_count,
-    v.value_score,
-    v.popularity_score,
-    v.views_count
-FROM vehicles v
-JOIN brands b ON v.brand_id = b.id
-JOIN models m ON v.model_id = m.id
+    vehicleid as id,
+    manufacturer as brand,
+    model,
+    modelyear as year,
+    price,
+    distance as mileage,
+    fueltype as fuel_type,
+    cartype as body_type,
+    colorname as color,
+    location as region,
+    selltype as dealer_type,
+    detailurl as detail_url,
+    photo
+FROM vehicles
 WHERE ${conditions.join(' AND ')}
+  AND price > 0
+  AND modelyear > 2000
 ORDER BY ${orderByFields.join(', ')}
 LIMIT 20`;
 
@@ -145,23 +144,23 @@ LIMIT 20`;
       const result = await query(sqlQuery);
       const vehicles: VehicleData[] = result.rows.map((row: any) => ({
         id: row.id.toString(),
-        brand: row.brand,
-        model: row.model,
-        year: row.year,
-        price: row.price,
-        mileage: row.mileage,
-        fuelType: row.fuel_type,
-        bodyType: row.body_type,
-        seatingCapacity: row.seating_capacity,
-        fuelEfficiency: row.fuel_efficiency || 0,
-        safetyRating: row.safety_rating || 0,
-        features: Array.isArray(row.features) ? row.features : [],
-        region: row.region,
-        dealerType: row.dealer_type,
-        accidentHistory: row.accident_history || false,
-        ownerCount: row.owner_count || 1,
-        valueScore: row.value_score || 50,
-        popularityScore: row.popularity_score || 50
+        brand: row.brand || '정보없음',
+        model: row.model || '정보없음',
+        year: row.year || 0,
+        price: row.price || 0,
+        mileage: row.mileage || 0,
+        fuelType: row.fuel_type || '정보없음',
+        bodyType: row.body_type || '정보없음',
+        seatingCapacity: 5, // 실제 DB에 없는 정보는 기본값
+        fuelEfficiency: this.estimateFuelEfficiency(row.fuel_type, row.body_type),
+        safetyRating: this.estimateSafetyRating(row.year),
+        features: [],
+        region: row.region || '정보없음',
+        dealerType: row.dealer_type || '일반',
+        accidentHistory: false, // 실제 DB에 없는 정보
+        ownerCount: 1, // 실제 DB에 없는 정보
+        valueScore: this.calculateValueScore(row.price, row.year, row.mileage),
+        popularityScore: this.calculatePopularityScore(row.brand)
       }));
 
       // 3. 사용자 선호도 기반 점수 계산
@@ -262,13 +261,21 @@ LIMIT 20`;
     try {
       const sqlQuery = `
         SELECT
-          v.*,
-          b.name as brand_name,
-          m.name as model_name
-        FROM vehicles v
-        JOIN brands b ON v.brand_id = b.id
-        JOIN models m ON v.model_id = m.id
-        WHERE v.id = $1 AND v.is_available = true
+          vehicleid as id,
+          manufacturer as brand,
+          model,
+          modelyear as year,
+          price,
+          distance as mileage,
+          fueltype as fuel_type,
+          cartype as body_type,
+          colorname as color,
+          location as region,
+          selltype as dealer_type,
+          detailurl as detail_url,
+          photo
+        FROM vehicles
+        WHERE vehicleid = $1
       `;
 
       const result = await query(sqlQuery, [vehicleId]);
@@ -280,23 +287,23 @@ LIMIT 20`;
       const row = result.rows[0];
       return {
         id: row.id.toString(),
-        brand: row.brand_name,
-        model: row.model_name,
-        year: row.year,
-        price: row.price,
-        mileage: row.mileage,
-        fuelType: row.fuel_type,
-        bodyType: row.body_type,
-        seatingCapacity: row.seating_capacity,
-        fuelEfficiency: row.fuel_efficiency || 0,
-        safetyRating: row.safety_rating || 0,
-        features: Array.isArray(row.features) ? row.features : [],
-        region: row.region,
-        dealerType: row.dealer_type,
-        accidentHistory: row.accident_history || false,
-        ownerCount: row.owner_count || 1,
-        valueScore: row.value_score || 50,
-        popularityScore: row.popularity_score || 50
+        brand: row.brand || '정보없음',
+        model: row.model || '정보없음',
+        year: row.year || 0,
+        price: row.price || 0,
+        mileage: row.mileage || 0,
+        fuelType: row.fuel_type || '정보없음',
+        bodyType: row.body_type || '정보없음',
+        seatingCapacity: 5,
+        fuelEfficiency: this.estimateFuelEfficiency(row.fuel_type, row.body_type),
+        safetyRating: this.estimateSafetyRating(row.year),
+        features: [],
+        region: row.region || '정보없음',
+        dealerType: row.dealer_type || '일반',
+        accidentHistory: false,
+        ownerCount: 1,
+        valueScore: this.calculateValueScore(row.price, row.year, row.mileage),
+        popularityScore: this.calculatePopularityScore(row.brand)
       };
     } catch (error) {
       console.error('Vehicle details query error:', error);
@@ -305,17 +312,115 @@ LIMIT 20`;
   }
 
   /**
-   * 차량 조회수 증가 (인기도 관리)
+   * 연비 추정 (실제 DB에 없는 정보)
+   */
+  static estimateFuelEfficiency(fuelType: string, bodyType: string): number {
+    const fuelTypeMap: Record<string, number> = {
+      '가솔린': 12,
+      '디젤': 14,
+      '하이브리드': 18,
+      'LPG': 10,
+      '전기': 25 // km/kWh 기준이지만 통일성을 위해
+    };
+
+    const bodyTypeMap: Record<string, number> = {
+      'SUV': -2,
+      '세단': 0,
+      '해치백': 1,
+      '쿠페': -1
+    };
+
+    let baseFuelEff = 12; // 기본값
+
+    // 연료 타입별 기본 연비
+    for (const [fuel, efficiency] of Object.entries(fuelTypeMap)) {
+      if (fuelType?.includes(fuel)) {
+        baseFuelEff = efficiency;
+        break;
+      }
+    }
+
+    // 차체 타입별 보정
+    for (const [body, adjustment] of Object.entries(bodyTypeMap)) {
+      if (bodyType?.includes(body)) {
+        baseFuelEff += adjustment;
+        break;
+      }
+    }
+
+    return Math.max(6, baseFuelEff); // 최소 6km/L
+  }
+
+  /**
+   * 안전도 추정 (연식 기준)
+   */
+  static estimateSafetyRating(year: number): number {
+    if (year >= 2020) return 5;
+    if (year >= 2015) return 4;
+    if (year >= 2010) return 3;
+    if (year >= 2005) return 2;
+    return 1;
+  }
+
+  /**
+   * 가치 점수 계산
+   */
+  static calculateValueScore(price: number, year: number, mileage: number): number {
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - year;
+
+    let score = 70; // 기본 점수
+
+    // 연식 보정 (최대 +/-20점)
+    if (age <= 3) score += 20;
+    else if (age <= 5) score += 10;
+    else if (age <= 8) score -= 5;
+    else score -= 15;
+
+    // 주행거리 보정 (최대 +/-15점)
+    if (mileage <= 30000) score += 15;
+    else if (mileage <= 50000) score += 10;
+    else if (mileage <= 80000) score += 5;
+    else if (mileage <= 120000) score -= 5;
+    else score -= 15;
+
+    return Math.max(10, Math.min(100, score));
+  }
+
+  /**
+   * 인기도 점수 계산
+   */
+  static calculatePopularityScore(brand: string): number {
+    const popularBrands = {
+      '현대': 85,
+      '기아': 80,
+      '한국지엠': 60,
+      '쌍용': 50,
+      '르노삼성': 55,
+      '벤츠': 90,
+      'BMW': 88,
+      '아우디': 85,
+      '토요타': 82,
+      '혼다': 78,
+      '닛산': 70,
+      '폭스바겐': 75
+    };
+
+    for (const [brandName, score] of Object.entries(popularBrands)) {
+      if (brand?.includes(brandName)) {
+        return score;
+      }
+    }
+
+    return 60; // 기본값
+  }
+
+  /**
+   * 차량 조회수 증가 (시뮬레이션)
    */
   static async incrementViewCount(vehicleId: string): Promise<void> {
-    try {
-      await query(
-        'UPDATE vehicles SET views_count = views_count + 1 WHERE id = $1',
-        [vehicleId]
-      );
-    } catch (error) {
-      console.error('Failed to increment view count:', error);
-    }
+    // 실제 DB에 views_count 컬럼이 없으므로 로깅만
+    console.log(`Vehicle ${vehicleId} view count incremented (simulated)`);
   }
 
   /**

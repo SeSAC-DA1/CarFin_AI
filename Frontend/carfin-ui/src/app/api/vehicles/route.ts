@@ -72,12 +72,11 @@ function detectLeaseVehicle(vehicle: any): { isLease: boolean; score: number; re
 
 export async function GET(request: NextRequest) {
   try {
-    // 🚀 AWS PostgreSQL RDS 실제 데이터 요청
+    // 🚀 실제 PostgreSQL 데이터베이스에서 차량 데이터 조회
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '20');
     const category = searchParams.get('category') || 'general';
 
-    // 🚀 실제 PostgreSQL RDS 데이터베이스 연결
     console.log('🚀 실제 PostgreSQL 데이터베이스 접근:', {
       category,
       limit,

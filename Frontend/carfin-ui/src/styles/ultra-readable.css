@@ -1,0 +1,290 @@
+/* 🔥 CarFin AI 초고대비 가독성 우선 디자인 시스템 */
+
+:root {
+  /* === 초고대비 텍스트 (WCAG AAA 기준) === */
+  --text-primary: #000000;          /* 완전 검정 - 최고 가독성 */
+  --text-secondary: #1a1a1a;       /* 거의 검정 - 보조 텍스트 */
+  --text-white: #ffffff;           /* 순백색 */
+  --text-accent: #0033cc;          /* 진한 블루 - 링크/강조 */
+
+  /* === 배경 컬러 === */
+  --bg-primary: #ffffff;           /* 순백 배경 */
+  --bg-secondary: #f9f9f9;        /* 거의 흰색 - 카드 배경 */
+  --bg-accent: #f0f8ff;           /* 매우 연한 블루 - 특별 영역 */
+
+  /* === 브랜드 컬러 (고대비) === */
+  --brand-primary: #0066cc;        /* 진한 블루 - 신뢰감 */
+  --brand-success: #006600;        /* 진한 그린 - 성공 */
+  --brand-warning: #cc6600;        /* 진한 오렌지 - 주의 */
+  --brand-error: #cc0000;          /* 진한 빨강 - 오류 */
+
+  /* === 테두리 === */
+  --border-primary: #cccccc;       /* 중간 회색 테두리 */
+  --border-accent: var(--brand-primary);
+
+  /* === 그림자 (선택적) === */
+  --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+  /* === 간격 === */
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+}
+
+/* === 전역 기본 설정 === */
+* {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* === 헤딩 시스템 (초대형) === */
+.ultra-heading-1 {
+  font-size: 3.5rem;              /* 56px - 초대형 */
+  font-weight: 900;               /* 초굵게 */
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: -0.02em;
+}
+
+.ultra-heading-2 {
+  font-size: 2.5rem;              /* 40px - 대형 */
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: var(--spacing-md);
+}
+
+.ultra-heading-3 {
+  font-size: 2rem;                /* 32px - 중형 */
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: var(--spacing-md);
+}
+
+.ultra-heading-4 {
+  font-size: 1.5rem;              /* 24px - 소형 */
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* === 본문 텍스트 (대형) === */
+.ultra-body-xl {
+  font-size: 1.25rem;             /* 20px - 초대형 본문 */
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.ultra-body-lg {
+  font-size: 1.125rem;            /* 18px - 대형 본문 */
+  color: var(--text-primary);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.ultra-body {
+  font-size: 1rem;                /* 16px - 기본 본문 */
+  color: var(--text-primary);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.ultra-body-sm {
+  font-size: 0.875rem;            /* 14px - 소형 본문 */
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* === 강조 텍스트 === */
+.ultra-text-accent {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.ultra-text-primary {
+  color: var(--brand-primary);
+  font-weight: 600;
+}
+
+.ultra-text-success {
+  color: var(--brand-success);
+  font-weight: 600;
+}
+
+/* === 카드 시스템 === */
+.ultra-card {
+  background: var(--bg-primary);
+  border: 2px solid var(--border-primary);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-light);
+}
+
+.ultra-card-accent {
+  background: var(--bg-accent);
+  border: 2px solid var(--brand-primary);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+}
+
+/* === 버튼 시스템 (초대형) === */
+.ultra-btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-white);
+  font-size: 1.25rem;              /* 20px */
+  font-weight: 700;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 56px;               /* 터치 친화적 */
+}
+
+.ultra-btn-primary:hover {
+  background: #0052a3;            /* 더 진한 블루 */
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+.ultra-btn-secondary {
+  background: var(--bg-primary);
+  color: var(--brand-primary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: 2px solid var(--brand-primary);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+}
+
+.ultra-btn-secondary:hover {
+  background: var(--brand-primary);
+  color: var(--text-white);
+}
+
+/* === 배지/라벨 === */
+.ultra-badge {
+  display: inline-block;
+  background: var(--brand-primary);
+  color: var(--text-white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.ultra-badge-success {
+  background: var(--brand-success);
+  color: var(--text-white);
+}
+
+.ultra-badge-warning {
+  background: var(--brand-warning);
+  color: var(--text-white);
+}
+
+/* === 레이아웃 === */
+.ultra-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.ultra-section {
+  padding: var(--spacing-xl) 0;
+}
+
+.ultra-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.ultra-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+/* === 반응형 === */
+@media (max-width: 768px) {
+  .ultra-heading-1 {
+    font-size: 2.5rem;              /* 40px on mobile */
+  }
+
+  .ultra-heading-2 {
+    font-size: 2rem;                /* 32px on mobile */
+  }
+
+  .ultra-body-xl {
+    font-size: 1.125rem;            /* 18px on mobile */
+  }
+
+  .ultra-grid-2,
+  .ultra-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .ultra-card {
+    padding: var(--spacing-md);
+  }
+}
+
+/* === 접근성 === */
+.ultra-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.ultra-focus:focus {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* === 애니메이션 비활성화 설정 === */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* === 디버깅용 === */
+.ultra-debug {
+  border: 2px solid red !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.ultra-debug-text {
+  color: red !important;
+  font-weight: bold !important;
+  font-size: 2rem !important;
+}

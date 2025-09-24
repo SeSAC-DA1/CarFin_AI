@@ -581,17 +581,113 @@ export function AICollaborationMeeting({
       </CardHeader>
 
       <CardContent className="relative">
-        {/* 회의실 배경 */}
-        <div className="relative w-full h-96 bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl overflow-hidden">
+        {/* 회의실 배경 - Enhanced */}
+        <div className="relative w-full h-[500px] bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 rounded-xl overflow-hidden border-2 border-purple-500/30">
+          {/* 배경 파티클 효과 */}
+          <div className="absolute inset-0 opacity-20">
+            {[...Array(50)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-blue-400 rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  scale: [0, 1, 0],
+                  opacity: [0, 1, 0]
+                }}
+                transition={{
+                  duration: 2 + Math.random() * 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 2
+                }}
+              />
+            ))}
+          </div>
 
-          {/* 중앙 테이블 */}
+          {/* AI 네트워크 그리드 */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
+              {[...Array(64)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="border border-cyan-500/20"
+                  animate={isCollaborating ? {
+                    borderColor: [
+                      'rgba(6, 182, 212, 0.1)',
+                      'rgba(6, 182, 212, 0.3)',
+                      'rgba(6, 182, 212, 0.1)'
+                    ]
+                  } : {}}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    delay: i * 0.05
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 중앙 AI 코어 - Enhanced */}
           <motion.div
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-            animate={isCollaborating ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+            animate={isCollaborating ? {
+              scale: [1, 1.2, 1],
+              rotate: [0, 360]
+            } : { scale: 1 }}
+            transition={{
+              scale: { duration: 2, repeat: Infinity },
+              rotate: { duration: 20, repeat: Infinity, ease: "linear" }
+            }}
           >
-            <div className="w-32 h-32 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full shadow-lg border-4 border-white flex items-center justify-center">
-              <Target className="w-8 h-8 text-amber-600" />
+            <div className="relative">
+              {/* 외부 링 */}
+              <div className="w-40 h-40 border-4 border-gradient-to-r from-cyan-400 to-purple-500 rounded-full">
+                {/* 내부 코어 */}
+                <div className="absolute inset-4 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-full shadow-2xl flex items-center justify-center">
+                  <motion.div
+                    animate={isCollaborating ? {
+                      boxShadow: [
+                        '0 0 20px rgba(59, 130, 246, 0.5)',
+                        '0 0 60px rgba(168, 85, 247, 0.8)',
+                        '0 0 20px rgba(59, 130, 246, 0.5)'
+                      ]
+                    } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur"
+                  >
+                    <Target className="w-10 h-10 text-white" />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* 중앙에서 에이전트로 향하는 데이터 빔 */}
+              {isCollaborating && agents.map((agent, index) => {
+                const position = getAgentPosition(index);
+                return (
+                  <motion.div
+                    key={`beam-${index}`}
+                    className="absolute top-1/2 left-1/2 w-1 origin-left"
+                    style={{
+                      height: '2px',
+                      background: 'linear-gradient(90deg, rgba(59,130,246,0.8) 0%, rgba(59,130,246,0) 100%)',
+                      transform: `rotate(${Math.atan2(position.y, position.x) * 180 / Math.PI}deg)`,
+                      width: `${Math.sqrt(position.x * position.x + position.y * position.y)}px`
+                    }}
+                    animate={{
+                      opacity: [0, 1, 0],
+                      scaleX: [0, 1, 0.5]
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: index * 0.3
+                    }}
+                  />
+                );
+              })}
             </div>
           </motion.div>
 
@@ -668,56 +764,373 @@ export function AICollaborationMeeting({
             );
           })}
 
-          {/* 협업 효과 */}
+          {/* Enhanced 협업 효과 */}
           {isCollaborating && (
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              animate={{
-                background: [
-                  'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
-                  'radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.1) 0%, transparent 70%)',
-                  'radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.1) 0%, transparent 70%)'
-                ]
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
+            <>
+              {/* 배경 그라데이션 효과 */}
+              <motion.div
+                className="absolute inset-0 pointer-events-none z-5"
+                animate={{
+                  background: [
+                    'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2) 0%, transparent 70%)',
+                    'radial-gradient(circle at 30% 70%, rgba(168, 85, 247, 0.25) 0%, transparent 60%)',
+                    'radial-gradient(circle at 70% 30%, rgba(34, 197, 94, 0.2) 0%, transparent 65%)',
+                    'radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.15) 0%, transparent 70%)'
+                  ]
+                }}
+                transition={{ duration: 4, repeat: Infinity }}
+              />
+
+              {/* 에너지 파장 */}
+              <motion.div
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                animate={{
+                  scale: [0, 2, 0],
+                  opacity: [0, 0.6, 0]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }}
+              >
+                <div className="w-80 h-80 border-2 border-cyan-400/30 rounded-full" />
+              </motion.div>
+
+              <motion.div
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                animate={{
+                  scale: [0, 1.5, 0],
+                  opacity: [0, 0.8, 0]
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: 0.5
+                }}
+              >
+                <div className="w-60 h-60 border-2 border-purple-400/40 rounded-full" />
+              </motion.div>
+
+              {/* 내비게이션 버블 */}
+              {[...Array(8)].map((_, i) => (
+                <motion.div
+                  key={`bubble-${i}`}
+                  className="absolute w-4 h-4 bg-gradient-to-br from-cyan-400/60 to-transparent rounded-full pointer-events-none"
+                  style={{
+                    left: `${20 + (i * 10)}%`,
+                    top: `${30 + Math.sin(i) * 20}%`
+                  }}
+                  animate={{
+                    y: [-20, -40, -20],
+                    opacity: [0, 1, 0],
+                    scale: [0.5, 1, 0.5]
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    delay: i * 0.3
+                  }}
+                />
+              ))}
+
+              {/* 🚀 ENHANCED: 에이전트 간 데이터 플로우 연결선 */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 8 }}>
+                {/* Vehicle Expert → Finance Expert */}
+                <motion.path
+                  d={getDataFlowPath(0, 1)}
+                  fill="none"
+                  stroke="url(#gradient1)"
+                  strokeWidth="3"
+                  strokeDasharray="10,5"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: [0, 1, 0] }}
+                  transition={{
+                    duration: 2.5,
+                    repeat: Infinity,
+                    delay: 0.5
+                  }}
+                />
+
+                {/* Finance Expert → Gemini Multi Agent */}
+                <motion.path
+                  d={getDataFlowPath(1, 2)}
+                  fill="none"
+                  stroke="url(#gradient2)"
+                  strokeWidth="3"
+                  strokeDasharray="10,5"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: [0, 1, 0] }}
+                  transition={{
+                    duration: 2.5,
+                    repeat: Infinity,
+                    delay: 1
+                  }}
+                />
+
+                {/* Gemini Multi Agent → Vehicle Expert */}
+                <motion.path
+                  d={getDataFlowPath(2, 0)}
+                  fill="none"
+                  stroke="url(#gradient3)"
+                  strokeWidth="3"
+                  strokeDasharray="10,5"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: [0, 1, 0] }}
+                  transition={{
+                    duration: 2.5,
+                    repeat: Infinity,
+                    delay: 1.5
+                  }}
+                />
+
+                {/* 그라데이션 정의 */}
+                <defs>
+                  <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="rgba(59, 130, 246, 0.8)" />
+                    <stop offset="100%" stopColor="rgba(168, 85, 247, 0.4)" />
+                  </linearGradient>
+                  <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="rgba(168, 85, 247, 0.8)" />
+                    <stop offset="100%" stopColor="rgba(34, 197, 94, 0.4)" />
+                  </linearGradient>
+                  <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="rgba(34, 197, 94, 0.8)" />
+                    <stop offset="100%" stopColor="rgba(59, 130, 246, 0.4)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              {/* 🎆 추가 시각 효과: 데이터 패킷 애니메이션 */}
+              {[...Array(6)].map((_, i) => {
+                const positions = [
+                  { from: 0, to: 1 }, // Vehicle → Finance
+                  { from: 1, to: 2 }, // Finance → Gemini
+                  { from: 2, to: 0 }, // Gemini → Vehicle
+                  { from: 1, to: 0 }, // Finance → Vehicle (역방향)
+                  { from: 2, to: 1 }, // Gemini → Finance (역방향)
+                  { from: 0, to: 2 }  // Vehicle → Gemini (직접)
+                ];
+                const flow = positions[i];
+                const fromPos = getAgentPosition(flow.from);
+                const toPos = getAgentPosition(flow.to);
+
+                return (
+                  <motion.div
+                    key={`data-packet-${i}`}
+                    className="absolute w-3 h-3 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full shadow-lg pointer-events-none"
+                    style={{ zIndex: 10 }}
+                    animate={{
+                      x: [fromPos.x + 192, toPos.x + 192],
+                      y: [fromPos.y + 192, toPos.y + 192],
+                      scale: [0.5, 1, 0.5],
+                      opacity: [0, 1, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: i * 0.4,
+                      ease: "easeInOut"
+                    }}
+                  />
+                );
+              })}
+            </>
           )}
         </div>
 
-        {/* 시작 버튼 */}
+        {/* Enhanced 시작 버튼 */}
         {!isCollaborating && (
           <motion.div
-            className="text-center mt-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            className="text-center mt-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
           >
-            <button
+            <motion.button
               onClick={startCollaboration}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105 flex items-center gap-2 mx-auto"
+              className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-bold py-4 px-8 rounded-2xl shadow-2xl transform transition-all duration-300 flex items-center gap-3 mx-auto overflow-hidden"
+              whileHover={{
+                scale: 1.05,
+                boxShadow: '0 20px 40px rgba(168, 85, 247, 0.4)'
+              }}
+              whileTap={{ scale: 0.95 }}
             >
-              <Users className="w-5 h-5" />
-              AI 협업 시작하기
-              <ArrowRight className="w-5 h-5" />
-            </button>
+              {/* 버튼 배경 글로우 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-cyan-500/20 blur-xl" />
+
+              {/* 콘텐츠 */}
+              <div className="relative flex items-center gap-3">
+                <motion.div
+                  animate={{
+                    rotate: [0, 360]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                >
+                  <Users className="w-6 h-6" />
+                </motion.div>
+                <span className="text-xl">AI 전문가 협업 시작</span>
+                <motion.div
+                  animate={{
+                    x: [0, 5, 0]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity
+                  }}
+                >
+                  <ArrowRight className="w-6 h-6" />
+                </motion.div>
+              </div>
+
+              {/* 버튼 파티클 */}
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-white/60 rounded-full"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`
+                  }}
+                  animate={{
+                    scale: [0, 1, 0],
+                    opacity: [0, 1, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: Math.random() * 2
+                  }}
+                />
+              ))}
+            </motion.button>
+
+            {/* 버튼 설명 */}
+            <motion.p
+              className="text-slate-400 text-sm mt-4 max-w-md mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+            >
+              🎆 3명의 AI 전문가가 당신의 요구사항을 분석하고 실시간으로 협업합니다
+            </motion.p>
           </motion.div>
         )}
 
-        {/* 협업 완료 메시지 */}
+        {/* Enhanced 협업 완료 메시지 */}
         {!isCollaborating && progress === 100 && (
           <motion.div
-            className="text-center mt-4 p-4 bg-green-50 rounded-lg border border-green-200"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            className="text-center mt-6 p-6 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 rounded-2xl border border-green-400/30 backdrop-blur-sm"
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", bounce: 0.4 }}
           >
-            <p className="text-green-800 font-medium">
-              🎉 AI 협업 완료! 최적의 결과를 도출했습니다.
-            </p>
-            <p className="text-green-600 text-sm mt-1">
-              총 소요시간: {(collaborationTime / 1000).toFixed(1)}초
-            </p>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", bounce: 0.6 }}
+              className="inline-block mb-4"
+            >
+              <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl mx-auto">
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  🎆
+                </motion.div>
+              </div>
+            </motion.div>
+
+            <motion.h3
+              className="text-2xl font-bold text-green-300 mb-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              AI 협업 분석 완료!
+            </motion.h3>
+
+            <motion.p
+              className="text-green-200 mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              3명의 전문가가 협업하여 최적의 차량 추천 결과를 도출했습니다.
+            </motion.p>
+
+            <motion.div
+              className="flex justify-center space-x-6 text-sm text-green-300"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>총 소요시간: {(collaborationTime / 1000).toFixed(1)}초</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Target className="w-4 h-4" />
+                <span>신뢰도: 95%</span>
+              </div>
+            </motion.div>
+
+            {/* 성과 배경 효과 */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+              {[...Array(15)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-green-400/40 rounded-full"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`
+                  }}
+                  animate={{
+                    scale: [0, 1, 0],
+                    opacity: [0, 1, 0]
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    delay: Math.random() * 3
+                  }}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+// 유틸리티 함수: 에이전트 위치 계산
+function getAgentPosition(index: number): { x: number; y: number } {
+  const radius = 140; // 중앙에서의 거리
+  const angles = [
+    -Math.PI / 2,     // 상단 (vehicle_expert)
+    -Math.PI * 7 / 6, // 좌하단 (finance_expert)
+    -Math.PI / 6      // 우하단 (gemini_multi_agent)
+  ];
+
+  const angle = angles[index] || 0;
+  return {
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius
+  };
+}
+
+// 추가 유틸리티: 데이터 플로우 애니메이션 경로
+function getDataFlowPath(fromIndex: number, toIndex: number): string {
+  const from = getAgentPosition(fromIndex);
+  const to = getAgentPosition(toIndex);
+
+  // 베지어 곡선으로 부드러운 경로 생성
+  const controlX = (from.x + to.x) / 2;
+  const controlY = (from.y + to.y) / 2 - 50; // 약간 위로 휘어지게
+
+  return `M ${from.x + 192} ${from.y + 192} Q ${controlX + 192} ${controlY + 192} ${to.x + 192} ${to.y + 192}`;
 }

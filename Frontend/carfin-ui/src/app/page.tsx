@@ -1,7 +1,7 @@
 'use client';
 
-import { UltimateCarConsultant } from '@/components/ultimate/UltimateCarConsultant';
+import { NewCarConsultant } from '@/components/ultimate/NewCarConsultant';
 
 export default function CarFinPage() {
-  return <UltimateCarConsultant />;
+  return <NewCarConsultant />;
 }

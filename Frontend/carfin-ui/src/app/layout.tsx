@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { MiniDatabaseStatus } from "@/components/demo/SimpleDatabaseStatus";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,8 +27,12 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}
       >
+        {/* 실시간 DB 연결 상태 - 모든 페이지 상단 고정 */}
+        <div className="fixed top-4 right-4 z-50">
+          <MiniDatabaseStatus />
+        </div>
         {children}
       </body>
     </html>
