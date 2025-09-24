@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Pool } from 'pg';
+import { query, testConnection } from '@/lib/database/db';
 
-// Gemini API와 데이터베이스 설정
+// Gemini API 설정
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
 
 interface PersonaContext {
   name: string;
@@ -161,6 +158,17 @@ export async function POST(request: NextRequest) {
     // RDS에서 페르소나 맞춤 차량 데이터 가져오기
     const vehicleData = await getPersonalizedVehicles(normalizedPersona);
 
+    if (vehicleData.length === 0) {
+      console.error('🚨 조회된 차량 데이터가 없습니다!');
+      return NextResponse.json({
+        success: false,
+        error: '현재 예산 범위에 맞는 차량을 찾을 수 없습니다. 예산을 조정하거나 다시 시도해주세요.',
+        timestamp: new Date().toISOString()
+      }, { status: 404 });
+    }
+
+    console.log(`✅ ${vehicleData.length}대의 차량 데이터로 전문가 분석 시작`);
+
     // 3명의 AI 전문가 분석 실행
     const [vehicleExpert, financeExpert, reviewExpert] = await Promise.all([
       analyzeVehicleExpert(normalizedPersona, vehicleData, userProfile),
@@ -171,8 +179,8 @@ export async function POST(request: NextRequest) {
     // 전문가 의견 통합 및 합의점 도출
     const consensus = await generateConsensus([vehicleExpert, financeExpert, reviewExpert], normalizedPersona);
 
-    // 최종 추천 차량 선정
-    const topVehicles = await selectTopVehicles([vehicleExpert, financeExpert, reviewExpert], consensus);
+    // 최종 추천 차량 선정 (원본 차량 데이터와 함께)
+    const topVehicles = await selectTopVehicles([vehicleExpert, financeExpert, reviewExpert], consensus, vehicleData);
 
     const result: MultiAgentResult = {
       consultation_id: `consultation_${Date.now()}`,
@@ -211,53 +219,111 @@ async function getPersonalizedVehicles(persona: PersonaContext) {
     console.log('🔍 페르소나 맞춤 차량 데이터 조회:', persona);
 
     // 먼저 데이터베이스 연결 테스트
-    const testQuery = `SELECT COUNT(*) as total, MIN(price) as min_price, MAX(price) as max_price FROM vehicles WHERE price > 0`;
-    const testResult = await pool.query(testQuery);
+    const isConnected = await testConnection();
+    if (!isConnected) {
+      console.error('❌ 데이터베이스 연결 실패');
+      return [];
+    }
+
+    // 전체 데이터베이스 상태 확인
+    const testResult = await query(`SELECT COUNT(*) as total, MIN(price) as min_price, MAX(price) as max_price FROM vehicles WHERE price > 0`);
     console.log(`📊 전체 데이터베이스 상태:`, testResult.rows[0]);
 
-    // 안전한 budget 처리
+    // 안전한 budget 처리 - 데이터가 이미 만원 단위로 저장되어 있음
     const safeBudget = persona.budget || { min: 1500, max: 2500 };
-    const budgetMin = safeBudget.min > 10000 ? safeBudget.min : safeBudget.min * 10000;
-    const budgetMax = safeBudget.max > 10000 ? safeBudget.max : safeBudget.max * 10000;
+    // 만원 단위로 변환 (예: 2000만원 → 2000)
+    const budgetMin = safeBudget.min;
+    const budgetMax = safeBudget.max;
 
-    console.log(`💰 예산 범위: ${budgetMin}원 ~ ${budgetMax}원`);
+    console.log(`💰 예산 범위: ${budgetMin}만원 ~ ${budgetMax}만원`);
 
-    // 더 넓은 범위로 검색 (차종 조건 완화)
-    const query = `
+    // 페르소나 특성에 맞는 차량 검색 쿼리 - 개선된 다양성 확보
+    const vehicleQuery = `
       SELECT
         vehicleid, manufacturer, model, modelyear, price, distance,
-        fueltype, cartype, transmission, displacement, options, safetyfeatures
+        fueltype, cartype, transmission, trim, colorname, location,
+        -- 가성비 점수: 연식대비 가격, 주행거리 고려
+        CASE
+          WHEN modelyear >= 2020 THEN 3
+          WHEN modelyear >= 2018 THEN 2
+          ELSE 1
+        END +
+        CASE
+          WHEN distance < 50000 THEN 2
+          WHEN distance < 100000 THEN 1
+          ELSE 0
+        END as value_score
       FROM vehicles
       WHERE price BETWEEN $1 AND $2
         AND price > 0
         AND distance IS NOT NULL
-      ORDER BY price ASC, distance ASC
+        AND distance < 150000
+        AND modelyear IS NOT NULL
+        AND modelyear >= 2000
+        AND modelyear <= 2025  -- 미래 연식 제외
+        AND cartype IN ('준중형', '중형', '소형', 'SUV', '경차')
+        AND fueltype != '전기'  -- 전기차 제외로 일반 차량 우선
+        AND manufacturer NOT IN ('기타 제조사', '기타')
+      ORDER BY
+        -- 🎯 페르소나별 우선순위 적용
+        CASE
+          WHEN cartype = '준중형' THEN 1  -- 신중한 실용주의자 선호
+          WHEN cartype = '소형' THEN 2    -- 경제성 고려
+          WHEN cartype = '경차' THEN 3    -- 연비 우선
+          WHEN cartype = 'SUV' THEN 4     -- 안전성 고려
+          ELSE 5
+        END,
+        value_score DESC,  -- 가성비 우선
+        RANDOM()          -- 같은 조건일 때 다양성 확보
       LIMIT 50
     `;
 
-    const result = await pool.query(query, [budgetMin, budgetMax]);
+    const result = await query(vehicleQuery, [budgetMin, budgetMax]);
 
     console.log(`📊 조회된 차량 수: ${result.rows.length}`);
-    console.log(`🔍 실행된 쿼리: ${query}`);
     console.log(`💰 실제 검색 예산: ${budgetMin} ~ ${budgetMax}`);
+    console.log(`🔍 실행된 쿼리:`, vehicleQuery);
+    console.log(`🔢 쿼리 파라미터:`, [budgetMin, budgetMax]);
 
     if (result.rows.length === 0) {
-      // 예산 범위를 넓혀서 재시도
+      // 예산 범위를 넓혀서 재시도 - 페르소나 맞춤 확대
       console.log('🔍 예산 범위 확대해서 재조회...');
       const expandedQuery = `
         SELECT
           vehicleid, manufacturer, model, modelyear, price, distance,
-          fueltype, cartype, transmission, displacement, options, safetyfeatures
+          fueltype, cartype, transmission, trim, colorname, location,
+          -- 확대된 가성비 점수
+          CASE
+            WHEN modelyear >= 2019 THEN 3
+            WHEN modelyear >= 2016 THEN 2
+            ELSE 1
+          END +
+          CASE
+            WHEN distance < 80000 THEN 2
+            WHEN distance < 150000 THEN 1
+            ELSE 0
+          END as expanded_value_score
         FROM vehicles
         WHERE price BETWEEN $1 AND $2
           AND price > 0
-        ORDER BY price ASC
-        LIMIT 20
+          AND distance < 200000
+        ORDER BY
+          -- 🎯 신중한 실용주의자를 위한 확대 검색
+          CASE
+            WHEN cartype = '준중형' THEN 1
+            WHEN cartype = '소형' THEN 2
+            WHEN cartype = 'SUV' THEN 3  -- 확대 시 SUV도 고려
+            WHEN cartype = '경차' THEN 4
+            ELSE 5
+          END,
+          expanded_value_score DESC,
+          price ASC  -- 확대 시에는 예산 고려
+        LIMIT 30
       `;
 
-      const expandedResult = await pool.query(expandedQuery, [
-        budgetMin * 0.7,  // 30% 낮게
-        budgetMax * 1.5   // 50% 높게
+      const expandedResult = await query(expandedQuery, [
+        Math.floor(budgetMin * 0.7),  // 30% 낮게 (더 보수적)
+        Math.floor(budgetMax * 1.5)   // 50% 높게 (더 보수적)
       ]);
 
       console.log(`📊 확대 검색 결과: ${expandedResult.rows.length}`);
@@ -285,10 +351,13 @@ async function analyzeVehicleExpert(persona: PersonaContext, vehicles: any[], us
 - 우선순위: ${Array.isArray(persona.priorities) ? persona.priorities.join(', ') : ''}
 - 사용 용도: ${persona.usage}
 
-## 차량 데이터
-${vehicles.slice(0, 10).map(v =>
-  `- ${v.manufacturer} ${v.model} (${v.modelyear}년): ${Math.round(v.price/10000)}만원, 연료타입: ${v.fueltype}, 차종: ${v.cartype}`
+## 차량 데이터 (총 ${vehicles.length}대)
+${vehicles.slice(0, 8).map((v, idx) =>
+  `${idx+1}. ${v.manufacturer} ${v.model} (${v.modelyear}년)
+   - 가격: ${v.price}만원 (주행거리: ${Math.round(v.distance/10000)}만km)
+   - 연료: ${v.fueltype}, 차종: ${v.cartype}, 변속기: ${v.transmission}`
 ).join('\n')}
+${vehicles.length > 8 ? `\n... 외 ${vehicles.length - 8}대 추가` : ''}
 
 다음 JSON 형식으로 전문가 분석을 제공해주세요:
 
@@ -321,7 +390,7 @@ ${vehicles.slice(0, 10).map(v =>
         vehicleid: v.vehicleid,
         manufacturer: v.manufacturer,
         model: v.model,
-        price: Math.round(v.price/10000),
+        price: v.price, // 이미 만원 단위로 저장되어 있음
         reasoning: `기술적 신뢰성과 ${persona.priorities[0]} 우선순위에 적합`,
         pros: ['검증된 기술력', '우수한 안전성'],
         cons: ['연비 개선 필요', '일부 편의사양 부족']
@@ -345,10 +414,12 @@ async function analyzeFinanceExpert(persona: PersonaContext, vehicles: any[], us
 - 예산: ${persona.budget?.min}~${persona.budget?.max}만원
 - 우선순위: ${Array.isArray(persona.priorities) ? persona.priorities.join(', ') : ''}
 
-## 차량 가격 데이터
-${vehicles.slice(0, 10).map(v =>
-  `- ${v.manufacturer} ${v.model}: ${Math.round(v.price/10000)}만원, 연료: ${v.fueltype}`
+## 차량 가격 데이터 (총 ${vehicles.length}대)
+${vehicles.slice(0, 8).map((v, idx) =>
+  `${idx+1}. ${v.manufacturer} ${v.model}: ${v.price}만원 (${Math.round(v.distance/10000)}만km)
+   - 연료: ${v.fueltype}, 차종: ${v.cartype}`
 ).join('\n')}
+${vehicles.length > 8 ? `\n... 외 ${vehicles.length - 8}대 추가` : ''}
 
 다음 JSON 형식으로 금융 전문가 분석을 제공해주세요:
 
@@ -381,7 +452,7 @@ ${vehicles.slice(0, 10).map(v =>
         vehicleid: v.vehicleid,
         manufacturer: v.manufacturer,
         model: v.model,
-        price: Math.round(v.price/10000),
+        price: v.price, // 이미 만원 단위로 저장되어 있음
         reasoning: `예산 대비 최적의 가성비와 낮은 유지비`,
         pros: ['합리적 가격', '낮은 유지비'],
         cons: ['높은 보험료', '빠른 감가상각']
@@ -405,10 +476,13 @@ async function analyzeReviewExpert(persona: PersonaContext, vehicles: any[], use
 - 특징: ${Array.isArray(persona.key_characteristics) ? persona.key_characteristics.join(', ') : ''}
 - 사용 패턴: ${persona.usage}
 
-## 차량 데이터
-${vehicles.slice(0, 10).map(v =>
-  `- ${v.manufacturer} ${v.model}: ${v.cartype}, 변속기: ${v.transmission}`
+## 차량 데이터 (총 ${vehicles.length}대)
+${vehicles.slice(0, 8).map((v, idx) =>
+  `${idx+1}. ${v.manufacturer} ${v.model} (${v.modelyear}년)
+   - 차종: ${v.cartype}, 변속기: ${v.transmission}
+   - 가격: ${v.price}만원, 주행거리: ${Math.round(v.distance/10000)}만km`
 ).join('\n')}
+${vehicles.length > 8 ? `\n... 외 ${vehicles.length - 8}대 추가` : ''}
 
 다음 JSON 형식으로 리뷰 전문가 분석을 제공해주세요:
 
@@ -441,7 +515,7 @@ ${vehicles.slice(0, 10).map(v =>
         vehicleid: v.vehicleid,
         manufacturer: v.manufacturer,
         model: v.model,
-        price: Math.round(v.price/10000),
+        price: v.price, // 이미 만원 단위로 저장되어 있음
         reasoning: `유사 페르소나의 높은 만족도와 긍정적 후기`,
         pros: ['높은 사용자 만족도', '우수한 실용성'],
         cons: ['일부 기능 아쉬움', '브랜드 선호도 차이']
@@ -488,8 +562,8 @@ async function generateConsensus(agents: AgentAnalysis[], persona: PersonaContex
   }
 }
 
-// 최종 TOP 차량 선정
-async function selectTopVehicles(agents: AgentAnalysis[], consensus: any) {
+// 최종 TOP 차량 선정 (상세 정보 포함)
+async function selectTopVehicles(agents: AgentAnalysis[], consensus: any, originalVehicles: any[]) {
   // 각 전문가의 추천 차량들을 종합
   const allSuggestions = agents.flatMap(agent => agent.vehicle_suggestions);
 
@@ -497,19 +571,47 @@ async function selectTopVehicles(agents: AgentAnalysis[], consensus: any) {
   const vehicleScores = new Map();
 
   allSuggestions.forEach(suggestion => {
-    const key = `${suggestion.manufacturer}_${suggestion.model}`;
+    const key = `${suggestion.manufacturer}_${suggestion.model}_${suggestion.vehicleid}`;
     if (!vehicleScores.has(key)) {
+      // 원본 차량 데이터에서 상세 정보 찾기
+      const originalVehicle = originalVehicles.find(v => v.vehicleid === suggestion.vehicleid);
+
       vehicleScores.set(key, {
         ...suggestion,
+        // 원본 데이터에서 추가 정보 가져오기
+        modelyear: originalVehicle?.modelyear,
+        distance: originalVehicle?.distance,
+        fueltype: originalVehicle?.fueltype,
+        cartype: originalVehicle?.cartype,
+        transmission: originalVehicle?.transmission,
+        trim: originalVehicle?.trim,
+        colorname: originalVehicle?.colorname,
+        location: originalVehicle?.location,
         agent_votes: [],
-        final_score: 0
+        final_score: 0,
+        expert_analyses: [] // 전문가별 상세 분석 저장
       });
     }
 
     const vehicle = vehicleScores.get(key);
-    vehicle.agent_votes.push(agents.find(a =>
+    const expertAgent = agents.find(a =>
       a.vehicle_suggestions.some(s => s.vehicleid === suggestion.vehicleid)
-    )?.agent_emoji || '');
+    );
+
+    if (expertAgent) {
+      vehicle.agent_votes.push(expertAgent.agent_emoji);
+      // 전문가별 상세 분석 추가
+      vehicle.expert_analyses.push({
+        agent_name: expertAgent.agent_name,
+        agent_emoji: expertAgent.agent_emoji,
+        agent_role: expertAgent.agent_role,
+        reasoning: suggestion.reasoning,
+        pros: suggestion.pros,
+        cons: suggestion.cons,
+        confidence: expertAgent.analysis.confidence_level
+      });
+    }
+
     vehicle.final_score += 1;
   });
 
@@ -534,6 +636,28 @@ function getCarTypeFromUsage(usage: string): string {
   return mapping[usage] || '승용';
 }
 
+function getPreferredCarType(persona: PersonaContext): string {
+  // 페르소나 이름과 특성을 기반으로 선호 차종 결정
+  const name = persona.name.toLowerCase();
+  const characteristics = persona.key_characteristics?.join(' ').toLowerCase() || '';
+  const usage = persona.usage?.toLowerCase() || '';
+
+  if (name.includes('가족') || name.includes('육아') || usage.includes('suv') || characteristics.includes('안전')) {
+    return 'SUV';
+  }
+  if (name.includes('신혼') || name.includes('커플') || usage.includes('준중형') || characteristics.includes('실용')) {
+    return '준중형';
+  }
+  if (name.includes('직장') || name.includes('출근') || usage.includes('세단') || characteristics.includes('비즈니스')) {
+    return '세단';
+  }
+  if (name.includes('혼자') || name.includes('도심') || characteristics.includes('경제')) {
+    return '경차';
+  }
+
+  return '준중형';  // 기본값
+}
+
 function getDefaultAnalysis() {
   return {
     summary: "전문가 분석을 진행했습니다.",
@@ -555,7 +679,7 @@ function getDefaultVehicleExpert(vehicles: any[]): AgentAnalysis {
       vehicleid: v.vehicleid,
       manufacturer: v.manufacturer,
       model: v.model,
-      price: Math.round(v.price/10000),
+      price: v.price, // 이미 만원 단위로 저장됨
       reasoning: '기술적 검토 완료',
       pros: ['검증된 기술', '안전성 확보'],
       cons: ['추가 검토 필요']
@@ -574,7 +698,7 @@ function getDefaultFinanceExpert(vehicles: any[]): AgentAnalysis {
       vehicleid: v.vehicleid,
       manufacturer: v.manufacturer,
       model: v.model,
-      price: Math.round(v.price/10000),
+      price: v.price, // 이미 만원 단위로 저장됨
       reasoning: '금융적 검토 완료',
       pros: ['합리적 가격', '적정 유지비'],
       cons: ['추가 분석 필요']
@@ -593,7 +717,7 @@ function getDefaultReviewExpert(vehicles: any[]): AgentAnalysis {
       vehicleid: v.vehicleid,
       manufacturer: v.manufacturer,
       model: v.model,
-      price: Math.round(v.price/10000),
+      price: v.price, // 이미 만원 단위로 저장됨
       reasoning: '사용자 후기 검토 완료',
       pros: ['사용자 만족', '실용적 설계'],
       cons: ['개인차 존재']

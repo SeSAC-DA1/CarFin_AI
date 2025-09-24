@@ -2,21 +2,20 @@
 
 import { useState } from 'react';
 import { SimpleLanding } from '@/components/landing/SimpleLanding';
-import { EmpatheticEntry } from '@/components/entry/EmpatheticEntry';
+import { PersonaDiscovery, PersonaAnalysisResult } from '@/components/persona/PersonaDiscovery';
 import { RealTimeAgentChat } from '@/components/analysis/RealTimeAgentChat';
 import { DataDashboard } from '@/components/dashboard/DataDashboard';
 import { UserProfileWizard } from '@/components/profile/UserProfileWizard';
 
 type ServicePhase =
   | 'landing'           // 3초 랜딩
-  | 'empathetic_entry'  // 공감형 상황 선택
-  | 'smart_questions'   // 맞춤형 질문 (기존 UserProfileWizard 활용)
+  | 'persona_discovery' // 페르소나 발견 (새로운 5문항 시스템)
+  | 'smart_questions'   // 맞춤형 질문 (간소화된 UserProfileWizard)
   | 'realtime_analysis' // 실시간 AI 분석 시각화
   | 'data_dashboard'    // 데이터 기반 분석 대시보드
 
 interface UserJourneyData {
-  entryType: 'beginner' | 'confused' | 'confident' | null;
-  questions: string[];
+  personaAnalysis: PersonaAnalysisResult | null;
   profileData: any;
   personaContext: any;
   analysisResult: any;
@@ -25,8 +24,7 @@ interface UserJourneyData {
 export function NewCarConsultant() {
   const [currentPhase, setCurrentPhase] = useState<ServicePhase>('landing');
   const [journeyData, setJourneyData] = useState<UserJourneyData>({
-    entryType: null,
-    questions: [],
+    personaAnalysis: null,
     profileData: null,
     personaContext: null,
     analysisResult: null
@@ -34,15 +32,14 @@ export function NewCarConsultant() {
 
   // 1단계: 랜딩에서 시작하기
   const handleStartJourney = () => {
-    setCurrentPhase('empathetic_entry');
+    setCurrentPhase('persona_discovery');
   };
 
-  // 2단계: 공감형 상황 선택
-  const handleEntrySelection = (entryType: 'beginner' | 'confused' | 'confident', questions: string[]) => {
+  // 2단계: 페르소나 분석 완료
+  const handlePersonaComplete = (personaAnalysis: PersonaAnalysisResult) => {
     setJourneyData(prev => ({
       ...prev,
-      entryType,
-      questions
+      personaAnalysis
     }));
     setCurrentPhase('smart_questions');
   };
@@ -56,8 +53,91 @@ export function NewCarConsultant() {
 
     let personaContext = null;
 
-    // 1순위: 성공적인 Gemini API 분석 결과 사용
-    if (analysisResult?.success && analysisResult?.personaAnalysis) {
+    // 1순위: PersonaDiscovery 분석 결과 사용
+    if (journeyData.personaAnalysis) {
+      const personaAnalysis = journeyData.personaAnalysis;
+      const primaryPersona = personaAnalysis.primaryPersona;
+
+      // PersonaType을 기반으로 personaContext 생성
+      const personaTypeMap = {
+        cautious_pragmatist: {
+          name: '신중한 실용주의자',
+          key_characteristics: ['가성비 중시', '신중한 결정', '안정성 추구'],
+          emphasis_points: ['가성비', '안정성', '실용성'],
+          mandatory_features: ['기본 안전장치', '연비 효율', 'A/S 편의성'],
+          priorities: ['연비', '안전성', '내구성'],
+          usage: '준중형차'
+        },
+        safety_family_focused: {
+          name: '안전 중심 가족형',
+          key_characteristics: ['안전성 최우선', '가족 중심', '신뢰성 추구'],
+          emphasis_points: ['안전성', '가족 편의', '신뢰성'],
+          mandatory_features: ['고급 안전장치', '넓은 공간', '차선유지보조'],
+          priorities: ['안전성', '공간성', '편의성'],
+          usage: 'SUV'
+        },
+        prestige_oriented: {
+          name: '품격 추구형',
+          key_characteristics: ['브랜드 중시', '이미지 추구', '품질 우선'],
+          emphasis_points: ['브랜드 가치', '품격', '완성도'],
+          mandatory_features: ['프리미엄 인테리어', '고급 옵션', '브랜드 신뢰성'],
+          priorities: ['브랜드', '품질', '이미지'],
+          usage: '대형차'
+        },
+        economic_rationalist: {
+          name: '경제적 합리주의자',
+          key_characteristics: ['경제성 추구', '효율성 중시', '합리적 선택'],
+          emphasis_points: ['경제성', '효율성', '유지비'],
+          mandatory_features: ['우수한 연비', '저렴한 유지비', '기본 기능'],
+          priorities: ['연비', '가격', '유지비'],
+          usage: '경차'
+        },
+        lifestyle_focused: {
+          name: '라이프스타일 중시형',
+          key_characteristics: ['디자인 중시', '개성 표현', '트렌드 민감'],
+          emphasis_points: ['디자인', '개성', '스타일'],
+          mandatory_features: ['세련된 디자인', '최신 기술', '개성적 컬러'],
+          priorities: ['디자인', '기술', '스타일'],
+          usage: '준중형차'
+        },
+        performance_oriented: {
+          name: '성능 지향형',
+          key_characteristics: ['성능 우선', '드라이빙 즐거움', '기술 관심'],
+          emphasis_points: ['성능', '주행감', '기술력'],
+          mandatory_features: ['우수한 성능', '스포티한 디자인', '고급 기술'],
+          priorities: ['성능', '주행성', '기술'],
+          usage: '쿠페'
+        },
+        eco_conscious: {
+          name: '환경 의식형',
+          key_characteristics: ['친환경 중시', '최신 기술', '지속가능성'],
+          emphasis_points: ['친환경', '혁신 기술', '지속가능성'],
+          mandatory_features: ['친환경 연료', '최신 기술', '에너지 효율'],
+          priorities: ['친환경', '기술', '효율성'],
+          usage: '하이브리드'
+        },
+        comfort_seeking: {
+          name: '편의 추구형',
+          key_characteristics: ['편안함 추구', '서비스 중시', '편의성 우선'],
+          emphasis_points: ['편안함', '서비스', '편의성'],
+          mandatory_features: ['편의 기능', '승차감', '서비스 품질'],
+          priorities: ['편의성', '승차감', '서비스'],
+          usage: '대형차'
+        }
+      };
+
+      const personaInfo = personaTypeMap[primaryPersona];
+      personaContext = {
+        ...personaInfo,
+        budget: profileData?.budget || { min: 1500, max: 2500 },
+        matchScore: personaAnalysis.matchScore,
+        personaType: primaryPersona
+      };
+      console.log('✅ PersonaDiscovery 분석 결과로 personaContext 생성:', personaContext);
+    }
+
+    // 2순위: 성공적인 Gemini API 분석 결과 사용
+    else if (analysisResult?.success && analysisResult?.personaAnalysis) {
       const personaData = analysisResult.personaAnalysis;
       personaContext = {
         name: personaData.persona_profile?.name || '실용적 차량 구매자',
@@ -158,8 +238,7 @@ export function NewCarConsultant() {
   // 처음부터 다시 시작
   const handleStartOver = () => {
     setJourneyData({
-      entryType: null,
-      questions: [],
+      personaAnalysis: null,
       profileData: null,
       personaContext: null,
       analysisResult: null
@@ -168,12 +247,12 @@ export function NewCarConsultant() {
   };
 
   // 뒤로가기 핸들러들
-  const handleBackFromEntry = () => {
+  const handleBackFromPersona = () => {
     setCurrentPhase('landing');
   };
 
   const handleBackFromQuestions = () => {
-    setCurrentPhase('empathetic_entry');
+    setCurrentPhase('persona_discovery');
   };
 
   const handleBackFromAnalysis = () => {
@@ -194,11 +273,11 @@ export function NewCarConsultant() {
           />
         );
 
-      case 'empathetic_entry':
+      case 'persona_discovery':
         return (
-          <EmpatheticEntry
-            onSelectEntry={handleEntrySelection}
-            onBack={handleBackFromEntry}
+          <PersonaDiscovery
+            onComplete={handlePersonaComplete}
+            onBack={handleBackFromPersona}
           />
         );
 
@@ -243,7 +322,7 @@ export function NewCarConsultant() {
       {currentPhase !== 'landing' && (
         <div className="fixed top-4 left-4 z-50">
           <div className="bg-slate-800/80 backdrop-blur-sm rounded-lg px-4 py-2 text-sm text-white">
-            {currentPhase === 'empathetic_entry' && '1/4 단계: 상황 선택'}
+            {currentPhase === 'persona_discovery' && '1/4 단계: 페르소나 분석'}
             {currentPhase === 'smart_questions' && '2/4 단계: 맞춤 질문'}
             {currentPhase === 'realtime_analysis' && '3/4 단계: AI 분석'}
             {currentPhase === 'data_dashboard' && '4/4 단계: 데이터 대시보드'}
@@ -259,10 +338,10 @@ export function NewCarConsultant() {
         <div className="fixed bottom-4 right-4 z-50 bg-slate-800/80 backdrop-blur-sm rounded-lg p-4 text-xs text-white max-w-sm">
           <div className="space-y-1">
             <div><strong>현재 단계:</strong> {currentPhase}</div>
-            <div><strong>진입 타입:</strong> {journeyData.entryType || '미설정'}</div>
-            <div><strong>질문 수:</strong> {journeyData.questions.length}개</div>
+            <div><strong>페르소나 분석:</strong> {journeyData.personaAnalysis?.primaryPersona || '미완료'}</div>
+            <div><strong>매칭도:</strong> {journeyData.personaAnalysis?.matchScore || 0}%</div>
             <div><strong>프로필:</strong> {journeyData.profileData ? '수집완료' : '미완료'}</div>
-            <div><strong>페르소나:</strong> {journeyData.personaContext ? '분석완료' : '미완료'}</div>
+            <div><strong>페르소나 컨텍스트:</strong> {journeyData.personaContext ? '분석완료' : '미완료'}</div>
             <div><strong>최종 분석:</strong> {journeyData.analysisResult ? '완료' : '미완료'}</div>
           </div>
         </div>

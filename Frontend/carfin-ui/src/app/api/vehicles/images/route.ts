@@ -6,74 +6,76 @@ export async function GET(request: NextRequest) {
     const manufacturer = searchParams.get('manufacturer');
     const model = searchParams.get('model');
     const vehicleId = searchParams.get('vehicleId');
+    const cartype = searchParams.get('cartype') || 'sedan';
 
-    // 🚀 실제 차량 이미지 URL 매핑 시스템
-    const vehicleImageDatabase: Record<string, string> = {
-      // 현대 모델들
-      '현대_아반떼': 'https://via.placeholder.com/400x300/1e40af/ffffff?text=Hyundai+Avante',
-      '현대_투싼': 'https://via.placeholder.com/400x300/059669/ffffff?text=Hyundai+Tucson',
-      '현대_소나타': 'https://via.placeholder.com/400x300/7c3aed/ffffff?text=Hyundai+Sonata',
-      '현대_싼타페': 'https://via.placeholder.com/400x300/dc2626/ffffff?text=Hyundai+SantaFe',
+    console.log(`🚗 차량 이미지 요청: manufacturer=${manufacturer}, model=${model}, vehicleId=${vehicleId}, cartype=${cartype}`);
 
-      // 기아 모델들
-      '기아_K5': 'https://via.placeholder.com/400x300/10b981/ffffff?text=Kia+K5',
-      '기아_스포티지': 'https://via.placeholder.com/400x300/f97316/ffffff?text=Kia+Sportage',
-      '기아_K3': 'https://via.placeholder.com/400x300/3b82f6/ffffff?text=Kia+K3',
-      '기아_쏘렌토': 'https://via.placeholder.com/400x300/6366f1/ffffff?text=Kia+Sorento',
-
-      // 제네시스 모델들
-      '제네시스_G70': 'https://via.placeholder.com/400x300/fbbf24/ffffff?text=Genesis+G70',
-      '제네시스_G80': 'https://via.placeholder.com/400x300/581c87/ffffff?text=Genesis+G80',
-      '제네시스_GV70': 'https://via.placeholder.com/400x300/be185d/ffffff?text=Genesis+GV70',
-
-      // BMW 모델들
-      'BMW_320d': 'https://via.placeholder.com/400x300/0f172a/ffffff?text=BMW+320d',
-      'BMW_X3': 'https://via.placeholder.com/400x300/1e3a8a/ffffff?text=BMW+X3',
-      'BMW_530i': 'https://via.placeholder.com/400x300/374151/ffffff?text=BMW+530i',
-
-      // 벤츠 모델들
-      '벤츠_C클래스': 'https://via.placeholder.com/400x300/111827/ffffff?text=Mercedes+C-Class',
-      '벤츠_E클래스': 'https://via.placeholder.com/400x300/4b5563/ffffff?text=Mercedes+E-Class',
-
-      // 아우디 모델들
-      '아우디_A4': 'https://via.placeholder.com/400x300/64748b/ffffff?text=Audi+A4',
-      '아우디_Q5': 'https://via.placeholder.com/400x300/94a3b8/ffffff?text=Audi+Q5',
-
-      // 토요타 모델들
-      '토요타_캠리': 'https://via.placeholder.com/400x300/e11d48/ffffff?text=Toyota+Camry',
-      '토요타_RAV4': 'https://via.placeholder.com/400x300/f59e0b/ffffff?text=Toyota+RAV4',
-
-      // 폭스바겐 모델들
-      '폭스바겐_골프': 'https://via.placeholder.com/400x300/065f46/ffffff?text=Volkswagen+Golf',
-      '폭스바겐_티구안': 'https://via.placeholder.com/400x300/0891b2/ffffff?text=VW+Tiguan'
+    // 🎨 브랜드별 색상 매핑
+    const brandColors: Record<string, string> = {
+      '현대': '1e40af',      // 파란색
+      '기아': '059669',      // 초록색
+      '제네시스': '7c3aed',  // 보라색
+      'BMW': '0f172a',       // 검정색
+      '벤츠': '4b5563',      // 회색
+      '아우디': '64748b',    // 청회색
+      '토요타': 'dc2626',    // 빨간색
+      '혼다': 'f97316',      // 주황색
+      '닛산': '0891b2',      // 하늘색
+      '폭스바겐': '065f46',  // 녹색
+      '쉐보레': 'fbbf24',    // 노란색
+      '렉서스': '581c87',    // 진보라색
+      '인피니티': 'be185d',  // 분홍색
+      '볼보': '374151',      // 진회색
+      '미쓰비시': 'e11d48',  // 빨간색
+      '스바루': '10b981',    // 녹색
+      '마쓰다': 'f59e0b',    // 주황색
     };
 
-    // 이미지 키 생성
-    let imageKey = '';
+    // 🚗 차종별 아이콘/텍스트 매핑
+    const vehicleTypeIcons: Record<string, string> = {
+      'SUV': '🚙',
+      '세단': '🚗',
+      '해치백': '🚕',
+      '쿠페': '🏎️',
+      '왜건': '🚐',
+      'MPV': '🚌',
+      '트럭': '🚚',
+      '컨버터블': '🏎️',
+      '경차': '🚗',
+      '준중형': '🚗',
+      '중형': '🚗',
+      '대형': '🚗',
+    };
+
+    // 동적 이미지 URL 생성
+    let imageUrl = '';
+    let displayText = '';
+    let brandColor = '6b7280'; // 기본 회색
+
     if (manufacturer && model) {
-      imageKey = `${manufacturer}_${model}`;
+      // 브랜드 색상 결정
+      brandColor = brandColors[manufacturer] || '6b7280';
+
+      // 차종 아이콘 결정
+      const typeIcon = vehicleTypeIcons[cartype] || vehicleTypeIcons['세단'] || '🚗';
+
+      // 표시할 텍스트 구성
+      displayText = `${typeIcon}+${encodeURIComponent(manufacturer)}+${encodeURIComponent(model)}`;
+
+      // 고품질 placeholder 이미지 URL 생성
+      imageUrl = `https://via.placeholder.com/400x250/${brandColor}/ffffff?text=${displayText}`;
+
+      console.log(`✅ 이미지 생성: ${manufacturer} ${model} -> ${brandColor}`);
     } else if (vehicleId) {
-      // vehicleId로 매칭 시도
-      const vehicleMapping: Record<string, string> = {
-        'V001': '현대_아반떼',
-        'V002': '기아_K5',
-        'V003': '제네시스_G70',
-        'V004': '현대_투싼',
-        'V005': 'BMW_320d',
-        'V006': '기아_스포티지',
-        'V007': '현대_소나타',
-        'V008': '벤츠_C클래스',
-        'V009': '제네시스_GV70',
-        'V010': '아우디_A4'
-      };
-      imageKey = vehicleMapping[vehicleId] || '';
+      // vehicleId만 있는 경우 기본 이미지
+      displayText = `🚗+Vehicle+${vehicleId}`;
+      imageUrl = `https://via.placeholder.com/400x250/6b7280/ffffff?text=${displayText}`;
+
+      console.log(`⚠️ vehicleId만으로 이미지 생성: ${vehicleId}`);
     }
 
-    // 이미지 URL 찾기
-    const imageUrl = vehicleImageDatabase[imageKey];
-
     if (imageUrl) {
-      console.log(`🚗 차량 이미지 제공: ${imageKey} -> ${imageUrl}`);
+      console.log(`🚗 차량 이미지 제공: ${manufacturer} ${model} -> ${imageUrl}`);
 
       return NextResponse.json({
         success: true,
@@ -81,14 +83,18 @@ export async function GET(request: NextRequest) {
         manufacturer,
         model,
         vehicleId,
-        message: '차량 이미지가 성공적으로 조회되었습니다.',
+        cartype,
+        brandColor: `#${brandColor}`,
+        displayText: decodeURIComponent(displayText),
+        message: '차량 이미지가 성공적으로 생성되었습니다.',
+        isPlaceholder: true,
         timestamp: new Date().toISOString()
       });
     } else {
-      console.log(`⚠️ 차량 이미지 없음: ${imageKey}`);
+      console.log(`⚠️ 차량 정보 부족으로 기본 이미지 제공`);
 
       // 기본 플레이스홀더 이미지
-      const defaultImageUrl = 'https://via.placeholder.com/400x300/e5e7eb/6b7280?text=Vehicle+Image';
+      const defaultImageUrl = 'https://via.placeholder.com/400x250/e5e7eb/6b7280?text=🚗+Vehicle+Image';
 
       return NextResponse.json({
         success: true,

@@ -9,6 +9,7 @@ interface VehicleImageProps {
   manufacturer?: string;
   model?: string;
   vehicleId?: string;
+  cartype?: string; // 차종 정보 추가
   className?: string;
   fallbackClassName?: string;
   showPlaceholder?: boolean;
@@ -22,6 +23,7 @@ export function VehicleImage({
   manufacturer = '',
   model = '',
   vehicleId,
+  cartype,
   className = '',
   fallbackClassName = '',
   showPlaceholder = true,
@@ -58,6 +60,7 @@ export function VehicleImage({
         if (manufacturer) params.append('manufacturer', manufacturer);
         if (model) params.append('model', model);
         if (vehicleId) params.append('vehicleId', vehicleId);
+        if (cartype) params.append('cartype', cartype);
 
         const response = await fetch(`/api/vehicles/images?${params}`);
         const data = await response.json();
@@ -73,7 +76,7 @@ export function VehicleImage({
     };
 
     fetchVehicleImage();
-  }, [manufacturer, model, vehicleId, src, useApi]);
+  }, [manufacturer, model, vehicleId, cartype, src, useApi]);
 
   // 실제 사용할 이미지 소스 결정
   const finalImageSrc = src || dynamicImageSrc;

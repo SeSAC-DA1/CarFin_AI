@@ -53,8 +53,9 @@ interface PersonaAnalysisResult {
 }
 
 export async function POST(request: NextRequest) {
+  let body: any;
   try {
-    const body = await request.json();
+    body = await request.json();
     const { userProfile }: { userProfile: UserProfileData } = body;
 
     console.log('🧠 페르소나 분석 시작:', {

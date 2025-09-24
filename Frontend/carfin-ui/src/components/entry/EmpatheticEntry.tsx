@@ -16,12 +16,12 @@ import {
 } from 'lucide-react';
 
 interface Props {
-  onSelectEntry: (entryType: 'beginner' | 'confused' | 'confident', questions: string[]) => void;
+  onSelectEntry: (entryType: 'beginner' | 'confused' | 'confident' | 'clueless', questions: string[]) => void;
   onBack: () => void;
 }
 
 interface EntryOption {
-  id: 'beginner' | 'confused' | 'confident';
+  id: 'beginner' | 'confused' | 'confident' | 'clueless';
   emoji: string;
   title: string;
   description: string;
@@ -88,6 +88,25 @@ const entryOptions: EntryOption[] = [
     ],
     color: 'simple-card',
     icon: Target
+  },
+  {
+    id: 'clueless',
+    emoji: '🤷',
+    title: '정말 아무것도 모르겠어요',
+    description: '차는 필요한데 뭘 어떻게 해야 할지 전혀 감이 안 와요',
+    thoughts: [
+      '차 살 돈은 있는데 뭘 사야 할지...',
+      '면허만 있고 운전도 잘 못해요',
+      '대중교통보다 차가 필요할 것 같은데',
+      '그냥 전문가가 다 정해줬으면 좋겠어요'
+    ],
+    questions: [
+      '차가 필요한 이유가 뭔가요?',
+      '하루에 차를 얼마나 타실 것 같나요?',
+      '예산은 대략 어느 정도 생각하고 계신가요?'
+    ],
+    color: 'simple-card',
+    icon: HelpCircle
   }
 ];
 
@@ -224,7 +243,7 @@ export function EmpatheticEntry({ onSelectEntry, onBack }: Props) {
         </div>
 
         {/* 선택지들 */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {entryOptions.map((option) => {
             const Icon = option.icon;
             return (

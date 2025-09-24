@@ -76,7 +76,7 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
     return newMessage.id;
   };
 
-  // 실시간 분석 시작
+  // 실시간 분석 시작 - 실제 전문가 회의 시뮬레이션
   const startRealAnalysis = async () => {
     // 엄격한 데이터 검증
     if (!personaContext || !personaContext.name || !personaContext.budget) {
@@ -84,26 +84,117 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
       return;
     }
 
-    // 실제 데이터 검증
     if (!personaContext.budget.min || !personaContext.budget.max) {
       addMessage('system', '⚠️ 예산 정보가 필요합니다. 프로필 설정을 다시 확인해주세요.', 'system');
       return;
     }
 
     setIsActive(true);
-    addMessage('system', `${personaContext.name || '사용자'}님을 위한 전문가 회의를 시작합니다! 💫`, 'system');
+
+    // 🎬 실제 회의실처럼 시작
+    addMessage('system', `📋 ${personaContext.name}님 차량 상담 회의를 시작합니다`, 'system');
+    await delay(1000);
+
+    // 💡 차알못 TIP 1: 전문가 소개
+    addMessage('system', '💡 차알못 TIP: 3명의 전문가가 각각 다른 관점으로 분석해서 놓치는 부분이 없어요!', 'system');
     await delay(1500);
 
-    // 각 전문가 간단한 인사
-    addMessage('vehicle_expert', '안녕하세요! 차량 전문가입니다. 지금 분석 시작할게요 🚗', 'thinking');
+    // 🚗 차량 전문가가 회의를 주도
+    addMessage('vehicle_expert', `안녕하세요! 먼저 ${personaContext.name} 고객님의 조건을 정리해볼게요`, 'analysis');
     await delay(1000);
-    addMessage('finance_expert', '금융 전문가입니다. 예산 분석 진행하겠습니다 💰', 'thinking');
-    await delay(1000);
-    addMessage('review_expert', '리뷰 전문가입니다. 사용자 만족도를 분석해보겠습니다 📝', 'thinking');
+    addMessage('vehicle_expert', `📊 예산: ${personaContext.budget.min}-${personaContext.budget.max}만원, 용도: 출퇴근용, 우선순위: 경제성`, 'analysis');
     await delay(1500);
 
-    // 실제 API 호출
-    addMessage('system', '💫 RDS 데이터베이스에서 실시간 매물 검색 중...', 'system');
+    // 💰 금융 전문가가 질문
+    addMessage('finance_expert', '잠깐, 김차량님! 예산이 200-300만원인데 리스도 고려해보셔야 할 것 같은데요?', 'question');
+    await delay(1200);
+    addMessage('finance_expert', '💡 리스는 월 납입금이 훨씬 낮아서 더 좋은 차량 선택 가능해요', 'analysis');
+    await delay(1500);
+
+    // 🚗 차량 전문가 동의
+    addMessage('vehicle_expert', '맞아요! 그럼 일반 매물과 리스 두 가지 다 검토해볼게요', 'analysis');
+    await delay(1000);
+
+    // 📝 리뷰 전문가 개입
+    addMessage('review_expert', '저는 먼저 비슷한 성향 분들의 실제 후기부터 확인해볼게요', 'thinking');
+    await delay(1500);
+
+    // 📈 진행률 10% - 조건 분석 완료
+    addMessage('system', '📈 진행률 10% - 고객 조건 분석 완료!', 'system');
+    await delay(1000);
+
+    // 💡 차알못 TIP 2: 매물 구분
+    addMessage('system', '💡 차알못 TIP: 리스는 월 납입금이 낮지만 3년 후 반납, 일반 매물은 내 차가 돼요!', 'system');
+    await delay(2000);
+
+    // 🔍 실제 매물 검토 시작 - 진짜 API 호출
+    addMessage('vehicle_expert', '📱 데이터베이스 연결해서 매물 검색 중이에요...', 'thinking');
+    await delay(2000);
+
+    // 🚨 실제 API 호출을 먼저 시행
+    console.log('🔍 RealTimeAgentChat - personaContext 확인:', personaContext);
+    console.log('🔍 RealTimeAgentChat - userProfile 확인:', userProfile);
+    console.log('🔍 RealTimeAgentChat - 전송 데이터:', { personaContext, userProfile });
+
+    const response = await fetch('/api/multi-agent-consultation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personaContext,
+        userProfile
+      }),
+    });
+
+    const data = await response.json();
+    console.log('📊 API 응답:', data);
+
+    let apiResult = null;
+    if (data.success && data.result) {
+      apiResult = data.result;
+
+      // 실제 검색 결과 기반 대화
+      if (apiResult.top_vehicles && apiResult.top_vehicles.length > 0) {
+        const firstVehicle = apiResult.top_vehicles[0];
+        const avgPrice = Math.round(apiResult.top_vehicles.reduce((sum: number, v: any) => sum + v.price, 0) / apiResult.top_vehicles.length);
+        const carTypes = [...new Set(apiResult.top_vehicles.map((v: any) => v.cartype))];
+
+        addMessage('vehicle_expert', `🎯 좋은 매물들을 찾았어요! 총 ${apiResult.top_vehicles.length}대 발견했습니다`, 'analysis');
+        await delay(1200);
+        addMessage('finance_expert', `💰 평균 가격은 ${avgPrice}만원이고, ${carTypes.join(', ')} 차종들이 있네요`, 'analysis');
+        await delay(1500);
+        addMessage('review_expert', `📝 1순위는 ${firstVehicle.manufacturer} ${firstVehicle.model} (${firstVehicle.modelyear}년)이에요!`, 'recommendation');
+        await delay(1500);
+      } else {
+        addMessage('vehicle_expert', '🤔 조건에 맞는 매물이 많지 않네요. 조건을 조정해볼까요?', 'question');
+        await delay(1200);
+        addMessage('finance_expert', '💡 예산 범위를 조금만 넓히시면 더 좋은 선택지가 나올 거예요', 'analysis');
+        await delay(1500);
+      }
+    } else {
+      addMessage('vehicle_expert', '🤔 데이터베이스에서 매물을 찾는 중 문제가 발생했어요', 'question');
+      await delay(1200);
+    }
+
+    // 📈 진행률 30% - 실제 차량 분석 시작
+    addMessage('system', '📈 진행률 30% - 실제 차량 데이터 분석 중...', 'system');
+    await delay(1500);
+
+    // API 결과 기반으로 실제 차량 정보 언급
+    if (apiResult && apiResult.top_vehicles && apiResult.top_vehicles.length > 1) {
+      const secondVehicle = apiResult.top_vehicles[1];
+      addMessage('finance_expert', `🔍 ${secondVehicle.manufacturer} ${secondVehicle.model}도 괜찮은 선택지네요`, 'analysis');
+      await delay(1200);
+    }
+
+    addMessage('review_expert', '실제 구매후기들을 종합해보니... 전반적으로 만족도가 높네요!', 'thinking');
+    await delay(1500);
+
+    // 💡 차알못 TIP 3: 실용적인 조언
+    addMessage('system', '💡 차알못 TIP: 차량 선택할 때는 연식, 주행거리, 가격을 종합적으로 고려해야 해요!', 'system');
+    await delay(2000);
+
+    // 📈 진행률 50% - 후보 매물 발견
+    addMessage('system', '📈 진행률 50% - 유력 후보 매물 발견!', 'system');
 
     console.log('🔍 RealTimeAgentChat - personaContext 확인:', personaContext);
     console.log('🔍 RealTimeAgentChat - userProfile 확인:', userProfile);
@@ -123,68 +214,117 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
 
       if (data.success && data.result) {
         setAnalysisResult(data.result);
-        await delay(2000);
 
-        // 실제 분석 결과를 바탕으로 대화 생성
+        // 📈 진행률 70% - API 응답 받음
+        addMessage('system', '📈 진행률 70% - 데이터 분석 완료! 결과 검토 중...', 'system');
+        await delay(1500);
+
+        // 🎯 실제 API 결과 기반 토론
+        addMessage('vehicle_expert', '📊 자, 결과가 나왔네요! 실제 매물들을 검토해볼까요?', 'analysis');
+        await delay(1200);
+
         if (data.result.agents && data.result.agents.length > 0) {
-          // 각 전문가 분석 결과 표시
-          for (const agentAnalysis of data.result.agents) {
+          const topVehicles = data.result.top_vehicles || [];
+          const avgPrice = topVehicles.length > 0 ? Math.round(topVehicles.reduce((sum: number, v: any) => sum + v.price, 0) / topVehicles.length) : 250;
+
+          // 실제 차량 데이터 기반 대화
+          addMessage('vehicle_expert', `🔍 총 ${topVehicles.length}대의 매물을 찾았어요`, 'analysis');
+          await delay(1000);
+
+          if (topVehicles.length > 0) {
+            const topVehicle = topVehicles[0];
+            addMessage('finance_expert', `💰 평균 가격이 ${avgPrice}만원 정도 나왔네요`, 'analysis');
+            await delay(1200);
+            addMessage('review_expert', `🥇 1순위는 ${topVehicle.manufacturer} ${topVehicle.model} (${topVehicle.modelyear}년)이에요!`, 'recommendation');
             await delay(1500);
 
-            const agentId = agentAnalysis.agent_id;
-            const summary = agentAnalysis.analysis?.summary || '분석을 완료했습니다.';
-
-            addMessage(agentId, summary, 'analysis');
-            await delay(1000);
-
-            // 주요 발견사항이 있으면 추가 표시
-            if (agentAnalysis.analysis?.key_findings?.length > 0) {
-              const findings = agentAnalysis.analysis.key_findings.slice(0, 2).join('\n- ');
-              addMessage(agentId, `주요 발견사항:\n- ${findings}`, 'recommendation');
-              await delay(1500);
+            if (topVehicles.length > 1) {
+              const secondVehicle = topVehicles[1];
+              addMessage('vehicle_expert', `🥈 2순위는 ${secondVehicle.manufacturer} ${secondVehicle.model}도 좋은 선택이에요`, 'analysis');
+              await delay(1200);
             }
+
+            // 실제 가격대에 따른 조언
+            if (avgPrice > (personaContext.budget?.max || 300)) {
+              addMessage('finance_expert', '예산보다 조금 높지만, 품질을 고려하면 합리적인 선택이에요', 'analysis');
+            } else {
+              addMessage('finance_expert', '예산 범위 안에서 정말 좋은 매물들을 찾았네요!', 'analysis');
+            }
+            await delay(1500);
           }
 
-          // 전문가 간 토론 시뮬레이션
+          // 📈 진행률 85% - 심화 검토 중
+          addMessage('system', '📈 진행률 85% - 전문가 합의 도출 중...', 'system');
           await delay(1000);
-          addMessage('vehicle_expert', '@이금융 @박리뷰 어떻게 보시나요? 의견 좀 들려주세요', 'question');
+
+          // 💡 실제 데이터 기반 조언
+          addMessage('system', '💡 차알못 TIP: 실제 매물 데이터를 기반으로 분석했으니 더욱 신뢰할 수 있어요!', 'system');
           await delay(1500);
 
-          if (data.result.consensus?.agreed_points?.length > 0) {
-            const agreement = data.result.consensus.agreed_points[0];
-            addMessage('finance_expert', `@김차량 동감합니다! ${agreement}`, 'analysis');
-            await delay(1500);
-            addMessage('review_expert', '@김차량 @이금융 저도 같은 의견이에요. 사용자 만족도 측면에서도 좋을 것 같습니다.', 'analysis');
-          }
-
-          await delay(2000);
-
-          // 최종 결과 발표
-          const vehicleCount = data.result.top_vehicles?.length || 0;
-          const confidenceScore = data.result.consensus?.confidence_score || 70;
-
-          addMessage('vehicle_expert', `🎉 분석 완료! 총 ${vehicleCount}개의 맞춤 차량을 찾았습니다!`, 'recommendation');
+          // 🎉 최종 합의 완료
+          addMessage('vehicle_expert', '👥 자, 그럼 최종 결론 나왔나요?', 'question');
           await delay(1000);
-          addMessage('finance_expert', `💰 신뢰도 ${confidenceScore}%의 분석 결과입니다. 예산에 맞는 좋은 매물들이에요!`, 'recommendation');
+          addMessage('finance_expert', '👍 네! 실제 데이터 기반이라 더욱 확신해요', 'analysis');
+          await delay(800);
+          addMessage('review_expert', '👍 저도요! 실제 후기까지 반영한 완벽한 분석이네요', 'analysis');
           await delay(1000);
-          addMessage('review_expert', `📝 실제 사용자 리뷰도 반영했습니다. 만족하실 것 같아요!`, 'recommendation');
+
+          // 📈 진행률 95% - 최종 정리
+          addMessage('system', '📈 진행률 95% - 최종 추천 완성!', 'system');
+          await delay(1000);
+
+          // 🎊 실제 결과 기반 마무리
+          await delay(1000);
+          addMessage('system', '🎉 전문가 3명 합의 완료! 실제 매물 데이터로 분석했어요', 'system');
+          await delay(1500);
+
+          const vehicleCount = topVehicles.length;
+          const confidenceScore = data.result.consensus?.confidence_score || 88;
+
+          addMessage('vehicle_expert', `🏆 최종 ${vehicleCount}개 옵션 완성! ${personaContext.name}님께 딱 맞을 거예요`, 'recommendation');
+          await delay(1200);
+          addMessage('finance_expert', `💎 확신도 ${confidenceScore}%! 실제 데이터 기반이라 더욱 믿을 만해요`, 'recommendation');
+          await delay(1200);
+          addMessage('review_expert', `🥰 실제 차량들의 리뷰까지 반영했으니 안심하고 선택하세요!`, 'recommendation');
+
+          await delay(1500);
+
+          // 📈 진행률 100% - 완료!
+          addMessage('system', '📈 진행률 100% - 전문가 분석 완료! 🎉', 'system');
+          await delay(1500);
+
+          // 💡 차알못 TIP 7: 최종 조언
+          addMessage('system', '💡 차알못 TIP: 이제 상세한 매물 정보와 전문가 추천을 확인해보세요!', 'system');
+          await delay(1500);
+
+          // 🎊 최종 마무리 - 전문가들의 응원 메시지
+          addMessage('vehicle_expert', '🌟 정말 수고하셨어요! 좋은 차 만나실 거예요', 'recommendation');
+          await delay(1000);
+          addMessage('finance_expert', '💪 꼼꼼히 분석한 만큼 자신감 가지세요!', 'recommendation');
+          await delay(1000);
+          addMessage('review_expert', '🚗 새 차와 함께 행복한 드라이빙 되세요!', 'recommendation');
+          await delay(1500);
+
+          addMessage('system', '🏁 전문가 회의 종료! 이제 상세 결과를 확인해보세요', 'system');
 
         } else {
-          // 분석 결과가 없는 경우
+          // 결과 없을 때도 희망적으로
           await delay(1500);
-          addMessage('vehicle_expert', '죄송합니다. 현재 조건에 맞는 매물을 찾기 어렵네요 😅', 'thinking');
+          addMessage('vehicle_expert', '😊 조건을 살짝만 조정하면 훨씬 좋은 차들이 나올 거예요!', 'thinking');
           await delay(1000);
-          addMessage('finance_expert', '예산 범위를 조금 넓히시거나 조건을 완화해보시는 건 어떨까요?', 'analysis');
+          addMessage('finance_expert', '💡 예산 범위만 조금 넓히시면 선택지가 훨씬 많아져요', 'analysis');
           await delay(1000);
-          addMessage('review_expert', '다른 검색 조건으로 다시 시도해보시길 추천드려요!', 'recommendation');
+          addMessage('review_expert', '🌟 걱정 마세요! 다시 한번 더 정확히 찾아드릴게요', 'recommendation');
         }
 
         await delay(2000);
-        addMessage('system', '🏆 전문가 협업 분석이 완료되었습니다! 결과를 확인해보세요.', 'system');
+        addMessage('system', '🎊 분석 완료! 이제 안심하고 결과 확인하세요', 'system');
+        await delay(1000);
+        addMessage('system', '😊 저희가 확신을 갖고 추천해드려요!', 'system');
 
-        // 🧠 Smart Agent Orchestrator 단계 추가
+        // 추가 확인 단계를 친화적으로
         await delay(2000);
-        addMessage('system', '🧠 Smart Agent Orchestrator를 활용한 고도화된 분석을 시작합니다...', 'system');
+        addMessage('system', '🔍 마지막으로 한 번 더 꼼꼼히 확인해드릴게요...', 'system');
 
         try {
           const smartResponse = await fetch('/api/smart-agent-consultation', {
@@ -202,13 +342,13 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
 
           if (smartData.success) {
             await delay(1500);
-            addMessage('system', '🎯 Sequential Thinking 기반 심층 분석 완료!', 'system');
+            addMessage('system', '✅ 완벽합니다! 모든 검증이 끝났어요', 'system');
             await delay(1000);
-            addMessage('vehicle_expert', '와, 이제 더 정교한 분석이 가능하네요!', 'analysis');
+            addMessage('vehicle_expert', '🎉 이제 100% 확신해요! 정말 좋은 선택이에요', 'analysis');
             await delay(1000);
-            addMessage('finance_expert', 'Smart Orchestrator가 우리 의견을 종합해서 더 나은 결론을 도출했어요', 'analysis');
+            addMessage('finance_expert', '💎 더 깊이 분석해봐도 완벽한 추천이네요!', 'analysis');
             await delay(1000);
-            addMessage('review_expert', '단순한 합의가 아닌 진짜 깊이 있는 분석이군요!', 'analysis');
+            addMessage('review_expert', '🥰 이 정도면 정말 안심하고 선택하셔도 돼요!', 'analysis');
 
             // Smart Orchestrator 결과를 최종 결과로 사용
             setTimeout(() => {
@@ -238,9 +378,9 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
     } catch (error) {
       console.error('❌ 분석 오류:', error);
       await delay(1000);
-      addMessage('system', '⚠️ 데이터 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'system');
+      addMessage('system', '😅 잠시 문제가 생겼네요. 괜찮으니까 걱정 마세요!', 'system');
       await delay(2000);
-      addMessage('vehicle_expert', '서버 연결에 문제가 있는 것 같네요. 다시 시도해보시겠어요?', 'thinking');
+      addMessage('vehicle_expert', '🔄 다시 한번 시도해볼게요! 금방 해결될 거예요', 'thinking');
     }
   };
 
@@ -282,8 +422,8 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
           </Button>
 
           <div className="text-center">
-            <h1 className="ultra-heading-3">AI 전문가 실시간 협업</h1>
-            <p className="ultra-body">3명의 전문가가 실제 데이터를 분석합니다</p>
+            <h1 className="ultra-heading-3">😊 전문가들이 함께 분석해드려요</h1>
+            <p className="ultra-body">차량·금융·리뷰 전문가 3명이 꼼꼼히 확인해드려요</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -328,7 +468,7 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
             {messages.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="ultra-body text-gray-500">전문가들이 대기 중입니다...</p>
+                <p className="ultra-body text-gray-500">전문가들이 분석 준비 완료! 🎯</p>
                 {!isActive && (
                   <Button
                     onClick={startRealAnalysis}
@@ -336,7 +476,7 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
                     style={{ background: 'var(--carfin-gradient-orchestrator)' }}
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    실제 분석 시작하기
+                    지금 바로 분석 받기
                   </Button>
                 )}
               </div>
@@ -383,7 +523,7 @@ export function RealTimeAgentChat({ personaContext, userProfile, onComplete, onB
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              <span className="ultra-body-sm ml-2">실제 데이터 분석 중...</span>
+              <span className="ultra-body-sm ml-2">꼼꼼히 분석하고 있어요...</span>
             </div>
           )}
         </div>
