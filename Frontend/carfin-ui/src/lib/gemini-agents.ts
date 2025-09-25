@@ -3,6 +3,8 @@
  * 2개 에이전트 (차량 추천 + 금융 상담)의 실시간 협업 필터링 시스템
  */
 
+import { query } from '@/lib/database/db';
+
 interface UserProfile {
   user_id: string;
   name: string;
@@ -96,7 +98,7 @@ class GeminiMultiAgent {
       const finalResult = await this.callGeminiAPI(collaborationPrompt, 'collaboration');
 
       // 실시간 협업 필터링 결과 생성
-      return this.processCollaborativeResult(vehicleResponse, financeResponse, finalResult, userProfile);
+      return await this.processCollaborativeResult(vehicleResponse, financeResponse, finalResult, userProfile);
 
     } catch (error) {
       console.error('Collaborative recommendation failed:', error);
@@ -356,7 +358,8 @@ ${JSON.stringify(currentData, null, 2)}
 
     } catch (error) {
       console.error('Real-time financial search failed:', error);
-      return this.getMockFinancialOptions();
+      // 실제 금융상품 계산으로 fallback
+      return this.getRealFinancialOptions(userProfile, userProfile?.budget || 3000);
     }
   }
 
@@ -531,8 +534,8 @@ ${JSON.stringify(currentData, null, 2)}
    * 실시간 협업 필터링
    */
   async realTimeCollaborativeFiltering(userProfile: Partial<UserProfile>): Promise<Vehicle[]> {
-    // 가상의 차량 데이터베이스 (실제로는 DB에서 가져옴)
-    const vehicleDatabase = this.getMockVehicleDatabase();
+    // 실제 데이터베이스에서 사용자 프로필 기반 차량 조회
+    const vehicleDatabase = await this.getRealVehicleDatabase(userProfile, 10);
 
     const filteringPrompt = `
 당신은 차량 추천 AI입니다. 사용자 프로필을 기반으로 실시간 협업 필터링을 수행하여 최적의 차량 3개를 선별하세요.
@@ -590,14 +593,20 @@ ${JSON.stringify(vehicleDatabase, null, 2)}
       throw new Error('Invalid vehicle array received');
     } catch (error) {
       console.error('Real-time collaborative filtering failed:', error);
-      // 사용자 프로필 기반 매치 스코어 계산하여 반환
-      return this.getMockVehicleDatabase()
-        .map(vehicle => ({
-          ...vehicle,
-          match_score: this.calculateMatchScore(vehicle, userProfile)
-        }))
-        .sort((a, b) => b.match_score - a.match_score)
-        .slice(0, 3);
+      // 실제 DB에서 기본 차량 조회로 fallback
+      try {
+        const fallbackVehicles = await this.getRealVehicleDatabase(userProfile, 5);
+        return fallbackVehicles
+          .map(vehicle => ({
+            ...vehicle,
+            match_score: this.calculateMatchScore(vehicle, userProfile)
+          }))
+          .sort((a, b) => b.match_score - a.match_score)
+          .slice(0, 3);
+      } catch (fallbackError) {
+        console.error('Fallback vehicle search also failed:', fallbackError);
+        return [];
+      }
     }
   }
 
@@ -756,17 +765,19 @@ ${financeExpertResponse}
     }
   }
 
-  private processCollaborativeResult(
+  private async processCollaborativeResult(
     vehicleResponse: AgentResponse,
     financeResponse: AgentResponse,
     finalResult: AgentResponse,
     userProfile?: Partial<UserProfile>
-  ): CollaborativeResult {
-    // 실제로는 응답을 파싱하여 구조화된 데이터로 변환
-    // 여기서는 mock 데이터 반환
+  ): Promise<CollaborativeResult> {
+    // 실제 DB에서 차량과 금융옵션을 조회
+    const vehicles = await this.getRealVehicleDatabase(userProfile, 3);
+    const financialOptions = await this.getRealFinancialOptions(userProfile, vehicles[0]?.price || 3000);
+
     return {
-      vehicles: this.getMockVehicleDatabase().slice(0, 3),
-      financial_options: this.getMockFinancialOptions(),
+      vehicles: vehicles,
+      financial_options: financialOptions,
       recommendations: [
         "현대 아반떼 - 합리적인 첫차로 최적",
         "기아 K5 - 가족용으로 적합한 중형차",
@@ -776,95 +787,255 @@ ${financeExpertResponse}
     };
   }
 
-  private getMockVehicleDatabase(): Vehicle[] {
-    return [
-      {
-        id: "1",
-        brand: "현대",
-        model: "아반떼",
-        year: 2023,
-        price: 2800,
-        mileage: 15000,
-        fuel_type: "가솔린",
-        body_type: "세단",
-        color: "화이트",
-        location: "서울",
-        images: [],
-        features: ["스마트크루즈", "후방카메라", "블루투스"],
-        fuel_efficiency: 14.5,
-        safety_rating: 5,
-        match_score: 92,
-        description: "경제적이고 실용적인 첫차 추천"
-      },
-      {
-        id: "2",
-        brand: "기아",
-        model: "K5",
-        year: 2022,
-        price: 3500,
-        mileage: 25000,
-        fuel_type: "하이브리드",
-        body_type: "세단",
-        color: "블랙",
-        location: "인천",
-        images: [],
-        features: ["하이브리드", "선루프", "통풍시트"],
-        fuel_efficiency: 16.8,
-        safety_rating: 5,
-        match_score: 88,
-        description: "연비 좋은 하이브리드 중형차"
-      },
-      {
-        id: "3",
-        brand: "제네시스",
-        model: "G70",
-        year: 2023,
-        price: 4200,
-        mileage: 8000,
-        fuel_type: "가솔린",
-        body_type: "세단",
-        color: "그레이",
-        location: "경기",
-        images: [],
-        features: ["가죽시트", "프리미엄사운드", "어댑티브크루즈"],
-        fuel_efficiency: 11.5,
-        safety_rating: 5,
-        match_score: 84,
-        description: "프리미엄 브랜드의 럭셔리 세단"
+  private async getRealVehicleDatabase(userProfile?: Partial<UserProfile>, limit: number = 20): Promise<Vehicle[]> {
+    try {
+      // 사용자 예산 범위 설정 (만원 단위)
+      const budgetMin = userProfile?.budget ? Math.max(userProfile.budget * 0.7, 1000) : 1500;
+      const budgetMax = userProfile?.budget ? userProfile.budget * 1.3 : 5000;
+
+      console.log(`🔍 실제 DB에서 차량 검색: ${budgetMin}~${budgetMax}만원 범위`);
+
+      // 실제 PostgreSQL 쿼리 - multi-agent-consultation 패턴 참고
+      const sqlQuery = `
+        SELECT
+          vehicleid as id,
+          manufacturer as brand,
+          model,
+          modelyear as year,
+          price,
+          distance as mileage,
+          fuel as fuel_type,
+          COALESCE(model_type, '세단') as body_type,
+          COALESCE(color, '기타') as color,
+          COALESCE(location, '위치정보없음') as location,
+          transmission,
+          engine_size,
+          -- 기본값 설정
+          15.0 as fuel_efficiency,
+          5 as safety_rating,
+          85 as match_score
+        FROM vehicles
+        WHERE price BETWEEN $1 AND $2
+          AND price > 0
+          AND distance IS NOT NULL
+          AND distance < 200000
+          AND modelyear IS NOT NULL
+          AND modelyear >= 2010
+        ORDER BY
+          (CASE
+            WHEN price <= $3 THEN 1
+            ELSE 2
+          END),
+          distance ASC,
+          modelyear DESC
+        LIMIT $4
+      `;
+
+      const result = await query(sqlQuery, [budgetMin, budgetMax, userProfile?.budget || 3000, limit]);
+
+      if (!result.rows || result.rows.length === 0) {
+        console.log('⚠️ DB에서 조건에 맞는 차량을 찾지 못했습니다.');
+        return [];
       }
-    ];
+
+      console.log(`✅ 실제 DB에서 ${result.rows.length}개 차량 조회 성공`);
+
+      // DB 결과를 Vehicle 인터페이스에 맞게 변환
+      return result.rows.map((row: any) => ({
+        id: String(row.id),
+        brand: row.brand || '정보없음',
+        model: row.model || '정보없음',
+        year: parseInt(row.year) || 2020,
+        price: parseInt(row.price) || 0,
+        mileage: parseInt(row.mileage) || 0,
+        fuel_type: row.fuel_type || '가솔린',
+        body_type: row.body_type || '세단',
+        color: row.color || '기타',
+        location: row.location || '위치정보없음',
+        images: [],
+        features: this.generateVehicleFeatures(row.brand, row.model, parseInt(row.year)),
+        fuel_efficiency: parseFloat(row.fuel_efficiency) || 15.0,
+        safety_rating: parseInt(row.safety_rating) || 5,
+        match_score: this.calculateMatchScore({
+          id: String(row.id),
+          brand: row.brand,
+          model: row.model,
+          year: parseInt(row.year),
+          price: parseInt(row.price),
+          mileage: parseInt(row.mileage),
+          fuel_type: row.fuel_type,
+          body_type: row.body_type,
+          color: row.color,
+          location: row.location,
+          images: [],
+          features: [],
+          fuel_efficiency: parseFloat(row.fuel_efficiency) || 15.0,
+          safety_rating: parseInt(row.safety_rating) || 5,
+          match_score: 0
+        }, userProfile || {}),
+        description: this.generateVehicleDescription(row.brand, row.model, parseInt(row.year), parseInt(row.price))
+      }));
+
+    } catch (error) {
+      console.error('❌ 실제 DB 차량 조회 실패:', error);
+      return [];
+    }
   }
 
-  private getMockFinancialOptions(): FinancialOption[] {
-    return [
-      {
+  private generateVehicleFeatures(brand: string, model: string, year: number): string[] {
+    const baseFeatures = ['네비게이션', '후방카메라', '블루투스'];
+    const premiumFeatures = ['선루프', '가죽시트', 'HID헤드라이트', '프리미엄사운드'];
+    const luxuryFeatures = ['어댑티브크루즈', '차선유지보조', '자동주차', '전동시트'];
+
+    if (year >= 2020 && (brand === '제네시스' || brand === 'BMW' || brand === '벤츠')) {
+      return [...baseFeatures, ...premiumFeatures, ...luxuryFeatures.slice(0, 2)];
+    } else if (year >= 2018) {
+      return [...baseFeatures, ...premiumFeatures.slice(0, 2)];
+    }
+    return baseFeatures;
+  }
+
+  private generateVehicleDescription(brand: string, model: string, year: number, price: number): string {
+    if (price >= 4000) {
+      return `프리미엄 ${brand} ${model} - 고급스럽고 안정적인 선택`;
+    } else if (price >= 3000) {
+      return `가족용으로 적합한 ${brand} ${model} - 실용성과 편의성 겸비`;
+    } else {
+      return `경제적이고 실용적인 ${brand} ${model} - 합리적인 첫차 선택`;
+    }
+  }
+
+  private async getRealFinancialOptions(userProfile?: Partial<UserProfile>, vehiclePrice: number = 3000): Promise<FinancialOption[]> {
+    try {
+      console.log(`💰 실제 금융상품 계산: 차량 가격 ${vehiclePrice}만원`);
+
+      // 사용자 신용도 추정 (수입 기반)
+      const creditScore = this.estimateCreditScore(userProfile);
+      const baseRate = this.getInterestRate(creditScore);
+
+      const options: FinancialOption[] = [];
+
+      // 1. 현금 일시불
+      options.push({
         type: "현금 일시불",
         monthly_payment: 0,
-        total_cost: 2800,
-        down_payment: 2800,
+        total_cost: vehiclePrice,
+        down_payment: vehiclePrice,
         description: "이자 부담 없는 일시불 구매",
-        pros: ["이자 없음", "즉시 소유권"],
+        pros: ["이자 없음", "즉시 소유권", "총 비용 최소"],
         cons: ["높은 초기 부담"]
-      },
-      {
-        type: "은행 대출",
-        monthly_payment: 52,
-        total_cost: 3120,
-        down_payment: 500,
-        description: "5년 은행 대출 (연 4.5%)",
-        pros: ["낮은 금리", "장기 분납"],
-        cons: ["신용심사 필요"]
-      },
-      {
-        type: "할부",
-        monthly_payment: 58,
-        total_cost: 3480,
-        down_payment: 0,
-        description: "5년 할부 (연 6.5%)",
-        pros: ["초기 부담 적음", "심사 간편"],
-        cons: ["높은 총 비용"]
-      }
-    ];
+      });
+
+      // 2. 은행 대출 (3년, 5년)
+      const bankRate = baseRate;
+
+      // 3년 대출
+      const monthly36 = this.calculateMonthlyPayment(vehiclePrice * 0.8, bankRate, 36);
+      options.push({
+        type: "은행 대출 (3년)",
+        monthly_payment: Math.round(monthly36),
+        total_cost: Math.round(vehiclePrice * 0.2 + monthly36 * 36),
+        down_payment: Math.round(vehiclePrice * 0.2),
+        description: `3년 은행 대출 (연 ${bankRate.toFixed(1)}%)`,
+        pros: ["낮은 금리", "빠른 완납"],
+        cons: ["신용심사 필요", "높은 월납입금"]
+      });
+
+      // 5년 대출
+      const monthly60 = this.calculateMonthlyPayment(vehiclePrice * 0.8, bankRate, 60);
+      options.push({
+        type: "은행 대출 (5년)",
+        monthly_payment: Math.round(monthly60),
+        total_cost: Math.round(vehiclePrice * 0.2 + monthly60 * 60),
+        down_payment: Math.round(vehiclePrice * 0.2),
+        description: `5년 은행 대출 (연 ${bankRate.toFixed(1)}%)`,
+        pros: ["낮은 금리", "낮은 월납입금"],
+        cons: ["신용심사 필요", "장기 부채"]
+      });
+
+      // 3. 할부금융 (높은 금리, 낮은 초기비용)
+      const installmentRate = bankRate + 1.5;
+      const monthlyInstallment = this.calculateMonthlyPayment(vehiclePrice * 0.9, installmentRate, 60);
+      options.push({
+        type: "할부금융",
+        monthly_payment: Math.round(monthlyInstallment),
+        total_cost: Math.round(vehiclePrice * 0.1 + monthlyInstallment * 60),
+        down_payment: Math.round(vehiclePrice * 0.1),
+        description: `5년 할부 (연 ${installmentRate.toFixed(1)}%)`,
+        pros: ["초기 부담 적음", "심사 간편", "빠른 승인"],
+        cons: ["높은 금리", "높은 총 비용"]
+      });
+
+      // 수입에 따른 필터링 (월납입금이 월소득의 30%를 넘지 않도록)
+      const monthlyIncomeLimit = userProfile?.income ? (userProfile.income / 12) * 0.3 : Infinity;
+
+      return options
+        .filter(option => option.monthly_payment === 0 || option.monthly_payment <= monthlyIncomeLimit)
+        .sort((a, b) => a.total_cost - b.total_cost);
+
+    } catch (error) {
+      console.error('❌ 실제 금융상품 계산 실패:', error);
+
+      // Fallback: 기본 계산
+      return [
+        {
+          type: "현금 일시불",
+          monthly_payment: 0,
+          total_cost: vehiclePrice,
+          down_payment: vehiclePrice,
+          description: "이자 부담 없는 일시불 구매",
+          pros: ["이자 없음", "즉시 소유권"],
+          cons: ["높은 초기 부담"]
+        },
+        {
+          type: "5년 대출",
+          monthly_payment: Math.round(vehiclePrice * 0.8 / 60 * 1.05),
+          total_cost: Math.round(vehiclePrice * 1.2),
+          down_payment: Math.round(vehiclePrice * 0.2),
+          description: "5년 대출 (연 5.0% 추정)",
+          pros: ["낮은 월납입", "분산된 부담"],
+          cons: ["이자 부담", "장기 부채"]
+        }
+      ];
+    }
+  }
+
+  private estimateCreditScore(userProfile?: Partial<UserProfile>): number {
+    // 나이와 소득을 기반으로 신용도 추정 (1-10 등급)
+    if (!userProfile) return 5;
+
+    let score = 5; // 기본값
+
+    if (userProfile.income) {
+      if (userProfile.income >= 5000) score += 2;
+      else if (userProfile.income >= 3000) score += 1;
+      else if (userProfile.income < 2000) score -= 1;
+    }
+
+    if (userProfile.age) {
+      if (userProfile.age >= 30 && userProfile.age <= 50) score += 1;
+      else if (userProfile.age < 25 || userProfile.age > 60) score -= 1;
+    }
+
+    return Math.max(1, Math.min(10, score));
+  }
+
+  private getInterestRate(creditScore: number): number {
+    // 신용등급별 기준금리 (연 %)
+    const rateTable: { [key: number]: number } = {
+      1: 8.5, 2: 7.5, 3: 6.5, 4: 5.5, 5: 4.5,
+      6: 4.0, 7: 3.5, 8: 3.0, 9: 2.5, 10: 2.0
+    };
+
+    return rateTable[creditScore] || 5.0;
+  }
+
+  private calculateMonthlyPayment(principal: number, annualRate: number, months: number): number {
+    const monthlyRate = annualRate / 100 / 12;
+    if (monthlyRate === 0) return principal / months;
+
+    return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+           (Math.pow(1 + monthlyRate, months) - 1);
   }
   /**
    * 차량 전문가 AI - 개별 차량 분석 및 추천

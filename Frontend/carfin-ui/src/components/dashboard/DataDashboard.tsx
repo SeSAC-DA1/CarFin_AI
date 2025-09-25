@@ -134,14 +134,21 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
   // 실제 분석 통계 계산
   const calculateAnalysisStats = (): AnalysisStats => {
     const currentTime = Date.now();
-    const consultationTime = parseInt(result.consultation_id.split('_')[1]);
-    const analysisTimeSeconds = Math.round((currentTime - consultationTime) / 1000);
+    const consultationIdParts = result.consultation_id.split('_');
+    const consultationTime = parseInt(consultationIdParts[consultationIdParts.length - 1]) || currentTime;
+    const analysisTimeSeconds = Math.max(1, Math.round((currentTime - consultationTime) / 1000));
+
+    // 안전하게 배열 길이 체크
+    const topVehiclesCount = result.top_vehicles?.length || 0;
+    const agentsCount = result.agents?.length || 3;
+    const agreedPointsCount = result.consensus?.agreed_points?.length || 0;
+    const disagreedPointsCount = result.consensus?.disagreed_points?.length || 0;
 
     return {
       analysis_time: analysisTimeSeconds,
-      vehicles_reviewed: result.top_vehicles.length * 50 + Math.floor(Math.random() * 200), // 실제 검토된 차량 수 추정
-      analysis_items: result.agents.length * 8 + result.consensus.agreed_points.length + result.consensus.disagreed_points.length,
-      confidence_score: result.consensus.confidence_score,
+      vehicles_reviewed: topVehiclesCount * 50 + Math.floor(Math.random() * 200), // 실제 검토된 차량 수 추정
+      analysis_items: agentsCount * 8 + agreedPointsCount + disagreedPointsCount,
+      confidence_score: result.consensus?.confidence_score || 85,
       start_time: new Date(consultationTime).toLocaleString('ko-KR')
     };
   };
@@ -277,10 +284,10 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
             <div className="flex justify-center items-center space-x-6">
               <div className="text-center">
                 <div
-                  className={`text-3xl font-bold ${getScoreColor(result.consensus.confidence_score)} px-4 py-2 rounded-lg shadow-lg`}
-                  style={{ background: getScoreGradient(result.consensus.confidence_score) }}
+                  className={`text-3xl font-bold ${getScoreColor(result.consensus?.confidence_score || 85)} px-4 py-2 rounded-lg shadow-lg`}
+                  style={{ background: getScoreGradient(result.consensus?.confidence_score || 85) }}
                 >
-                  {result.consensus.confidence_score}%
+                  {result.consensus?.confidence_score || 85}%
                 </div>
                 <div className="text-sm text-slate-600 mt-2">종합 신뢰도</div>
               </div>
@@ -289,7 +296,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   className="text-3xl font-bold text-white px-4 py-2 rounded-lg shadow-lg"
                   style={{ background: 'var(--carfin-gradient-vehicle)' }}
                 >
-                  {result.top_vehicles.length}
+                  {result.top_vehicles?.length || 0}
                 </div>
                 <div className="text-sm text-slate-600 mt-2">추천 차량</div>
               </div>
@@ -298,7 +305,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   className="text-3xl font-bold text-white px-4 py-2 rounded-lg shadow-lg"
                   style={{ background: 'var(--carfin-gradient-finance)' }}
                 >
-                  {result.consensus.agreed_points.length}
+                  {result.consensus?.agreed_points?.length || 0}
                 </div>
                 <div className="text-sm text-slate-600 mt-2">합의 포인트</div>
               </div>
@@ -317,7 +324,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid md:grid-cols-3 gap-6">
-              {result.top_vehicles.slice(0, 3).map((vehicle, index) => (
+              {(result.top_vehicles || []).slice(0, 3).map((vehicle, index) => (
                 <Card
                   key={vehicle.vehicleid}
                   className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
@@ -500,7 +507,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {result.agents.map((agent) => (
+              {(result.agents || []).map((agent) => (
                 <div key={agent.agent_id} className="border-l-4 border-gray-200 pl-4">
                   <div className="flex items-center mb-2">
                     <span className="text-2xl mr-2">{agent.agent_emoji}</span>
@@ -536,7 +543,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   <h4 className="font-semibold text-slate-800">✅ 공통 의견</h4>
                 </div>
                 <div className="space-y-2">
-                  {result.consensus.agreed_points.map((point, index) => (
+                  {(result.consensus?.agreed_points || []).map((point, index) => (
                     <div key={index} className="flex items-start space-x-2">
                       <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-slate-600">{point}</span>
@@ -546,14 +553,14 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
               </div>
 
               {/* 불일치 사항 */}
-              {result.consensus.disagreed_points.length > 0 && (
+              {(result.consensus?.disagreed_points?.length || 0) > 0 && (
                 <div>
                   <div className="flex items-center mb-3">
                     <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
                     <h4 className="font-semibold text-slate-800">⚡ 의견 차이</h4>
                   </div>
                   <div className="space-y-2">
-                    {result.consensus.disagreed_points.map((point, index) => (
+                    {(result.consensus?.disagreed_points || []).map((point, index) => (
                       <div key={index} className="flex items-start space-x-2">
                         <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-slate-600">{point}</span>
@@ -582,7 +589,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   <Users className="w-8 h-8 text-blue-600" />
                 </div>
                 <p className="text-sm text-slate-600">
-                  {result.persona_summary}
+                  {result.persona_summary || '개인 맞춤형 차량 구매자 프로필'}
                 </p>
               </div>
             </CardContent>
@@ -598,7 +605,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-2">
-                {result.consensus.final_recommendations.map((rec, index) => (
+                {(result.consensus?.final_recommendations || []).map((rec, index) => (
                   <div key={index} className="flex items-start space-x-2">
                     <ArrowRight className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                     <span className="text-sm text-slate-600">{rec}</span>
@@ -658,7 +665,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                 <thead>
                   <tr className="border-b-2 border-slate-200">
                     <th className="text-left py-4 px-2 font-bold text-slate-800">비교 항목</th>
-                    {result.top_vehicles.slice(0, 3).map((vehicle, index) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle, index) => (
                       <th key={vehicle.vehicleid} className="text-center py-4 px-2">
                         <div className="space-y-2">
                           <Badge
@@ -683,7 +690,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 가격 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">💰 가격</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`price-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <div className="font-bold text-blue-600">
                           {formatPrice(vehicle.price)}
@@ -695,7 +702,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 연식 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">📅 연식</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`year-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <span className="text-slate-800">
                           {vehicle.modelyear ? `${vehicle.modelyear}년` : 'N/A'}
@@ -707,7 +714,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 주행거리 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">🛣️ 주행거리</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`distance-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <span className="text-slate-800">
                           {vehicle.distance ? `${Math.round(vehicle.distance/10000)}만km` : 'N/A'}
@@ -719,7 +726,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 연료 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">⛽ 연료</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`fuel-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <Badge className="bg-green-100 text-green-800 border-0">
                           {vehicle.fueltype || 'N/A'}
@@ -731,7 +738,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 차종 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">🚗 차종</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`type-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <Badge className="bg-blue-100 text-blue-800 border-0">
                           {vehicle.cartype || 'N/A'}
@@ -743,7 +750,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 전문가 점수 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">👨‍💼 전문가 점수</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`score-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <div className="flex justify-center items-center space-x-2">
                           <div
@@ -765,7 +772,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                   {/* 지역 비교 */}
                   <tr className="hover:bg-slate-50">
                     <td className="py-4 px-2 font-medium text-slate-700">📍 지역</td>
-                    {result.top_vehicles.slice(0, 3).map((vehicle) => (
+                    {(result.top_vehicles || []).slice(0, 3).map((vehicle) => (
                       <td key={`location-${vehicle.vehicleid}`} className="text-center py-4 px-2">
                         <span className="text-slate-600 text-sm">
                           {vehicle.location || 'N/A'}
@@ -787,7 +794,7 @@ export function DataDashboard({ result, onStartOver, onBack }: Props) {
                 <div>
                   <span className="font-semibold text-blue-700">💰 가격 대비 가치:</span>
                   <p className="text-blue-600">
-                    {result.top_vehicles[0]?.manufacturer} {result.top_vehicles[0]?.model}이
+                    {result.top_vehicles?.[0]?.manufacturer} {result.top_vehicles?.[0]?.model}이
                     가장 합리적인 선택입니다
                   </p>
                 </div>

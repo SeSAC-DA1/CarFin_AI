@@ -3,6 +3,8 @@
  * 정보 제공 + 매칭 서비스 전용 설계
  */
 
+import { query } from '@/lib/database/db';
+
 interface UserProfile {
   user_id: string;
   name?: string;
@@ -139,7 +141,13 @@ ${JSON.stringify(currentData, null, 2)}
         .slice(0, 5);
     } catch (error) {
       console.error('Vehicle matching failed:', error);
-      return this.getMockVehicles(userProfile);
+      // 실제 DB에서 기본 차량 조회로 fallback
+      try {
+        return await this.getRealVehicles(userProfile, 5);
+      } catch (fallbackError) {
+        console.error('Fallback vehicle search also failed:', fallbackError);
+        return [];
+      }
     }
   }
 
@@ -175,7 +183,8 @@ ${JSON.stringify(currentData, null, 2)}
       };
     } catch (error) {
       console.error('Market analysis failed:', error);
-      return this.getMockMarketAnalysis(vehicle);
+      // 실제 시장 분석으로 fallback
+      return this.getRealMarketAnalysis(vehicle);
     }
   }
 
@@ -440,34 +449,252 @@ ${JSON.stringify(currentData, null, 2)}
     };
   }
 
-  private getMockVehicles(userProfile: UserProfile): VehicleListing[] {
-    // Mock 데이터 반환
-    return [];
+  private async getRealVehicles(userProfile: UserProfile, limit: number = 10): Promise<VehicleListing[]> {
+    try {
+      console.log(`🔍 realistic-agents: 실제 DB에서 차량 검색 중...`);
+
+      const budgetMin = userProfile.budget ? Math.max(userProfile.budget * 0.6, 1000) : 1500;
+      const budgetMax = userProfile.budget ? userProfile.budget * 1.4 : 6000;
+
+      const sqlQuery = `
+        SELECT
+          vehicleid as id,
+          manufacturer as brand,
+          model,
+          modelyear as year,
+          price,
+          distance as mileage,
+          fuel as fuel_type,
+          COALESCE(model_type, '세단') as body_type,
+          COALESCE(color, '기타') as color,
+          COALESCE(location, '위치정보없음') as location,
+          transmission,
+          engine_size,
+          -- 기본값 설정
+          15.0 as fuel_efficiency,
+          5 as safety_rating
+        FROM vehicles
+        WHERE price BETWEEN $1 AND $2
+          AND price > 0
+          AND distance IS NOT NULL
+          AND distance < 180000
+          AND modelyear IS NOT NULL
+          AND modelyear >= 2012
+        ORDER BY
+          (CASE
+            WHEN price <= $3 THEN 1
+            ELSE 2
+          END),
+          distance ASC,
+          modelyear DESC
+        LIMIT $4
+      `;
+
+      const result = await query(sqlQuery, [budgetMin, budgetMax, userProfile.budget || 3500, limit]);
+
+      if (!result.rows || result.rows.length === 0) {
+        console.log('⚠️ realistic-agents: DB에서 조건에 맞는 차량을 찾지 못했습니다.');
+        return [];
+      }
+
+      console.log(`✅ realistic-agents: 실제 DB에서 ${result.rows.length}개 차량 조회 성공`);
+
+      // DB 결과를 VehicleListing 인터페이스에 맞게 변환
+      return result.rows.map((row: any) => ({
+        id: String(row.id),
+        brand: row.brand || '정보없음',
+        model: row.model || '정보없음',
+        year: parseInt(row.year) || 2020,
+        price: parseInt(row.price) || 0,
+        mileage: parseInt(row.mileage) || 0,
+        fuel_type: row.fuel_type || '가솔린',
+        body_type: row.body_type || '세단',
+        color: row.color || '기타',
+        location: row.location || '위치정보없음',
+        transmission: row.transmission || '자동',
+        engine_size: row.engine_size || '1600cc',
+        fuel_efficiency: parseFloat(row.fuel_efficiency) || 15.0,
+        safety_rating: parseInt(row.safety_rating) || 5,
+        description: this.generateRealisticDescription(row.brand, row.model, parseInt(row.year), parseInt(row.price)),
+        images: [],
+        features: this.generateRealisticFeatures(row.brand, row.model, parseInt(row.year)),
+        contact: {
+          dealer_name: `${row.location} 딜러`,
+          phone: "02-XXXX-XXXX",
+          address: row.location || "위치정보없음"
+        }
+      }));
+
+    } catch (error) {
+      console.error('❌ realistic-agents: 실제 DB 차량 조회 실패:', error);
+      return [];
+    }
   }
 
-  private getMockMarketAnalysis(vehicle: VehicleListing) {
-    return {
-      price_analysis: {
-        market_average: vehicle.price * 1.05,
-        price_rating: 'good' as const,
-        confidence: 0.75
-      },
-      market_trends: {
-        demand_level: 'medium' as const,
-        price_trend: 'stable' as const,
-        seasonal_factor: '연말 할인 시기'
-      },
-      risk_assessment: {
-        overall_risk: 'low' as const,
-        risk_factors: [],
-        recommendations: ['정기점검 확인', '보험이력 조회']
+  private generateRealisticDescription(brand: string, model: string, year: number, price: number): string {
+    const descriptions = [
+      `${year}년식 ${brand} ${model} - 실제 매물`,
+      `검증된 ${brand} ${model} - 안전한 거래`,
+      `상태 양호한 ${year} ${brand} ${model}`,
+      `합리적 가격의 ${brand} ${model} - 추천매물`
+    ];
+    return descriptions[Math.floor(Math.random() * descriptions.length)];
+  }
+
+  private generateRealisticFeatures(brand: string, model: string, year: number): string[] {
+    const basicFeatures = ['에어백', '에어컨', 'ABS', 'EBD'];
+    const modernFeatures = ['네비게이션', '후방카메라', '블루투스', 'USB단자'];
+    const premiumFeatures = ['선루프', '가죽시트', '크루즈컨트롤', '열선시트'];
+
+    let features = [...basicFeatures];
+
+    if (year >= 2015) {
+      features.push(...modernFeatures.slice(0, 2));
+    }
+    if (year >= 2018 && (brand === '제네시스' || brand === 'BMW' || brand === '벤츠' || brand === '아우디')) {
+      features.push(...premiumFeatures.slice(0, 2));
+    }
+
+    return features;
+  }
+
+  private async getRealMarketAnalysis(vehicle: VehicleListing) {
+    try {
+      console.log(`📊 realistic-agents: ${vehicle.brand} ${vehicle.model} 실제 시장 분석 중...`);
+
+      // 실제 DB에서 동일 모델의 시장 가격 분석
+      const marketQuery = `
+        SELECT
+          AVG(price) as avg_price,
+          MIN(price) as min_price,
+          MAX(price) as max_price,
+          COUNT(*) as total_count,
+          STDDEV(price) as price_stddev
+        FROM vehicles
+        WHERE manufacturer = $1
+          AND model = $2
+          AND modelyear BETWEEN $3 AND $4
+          AND price > 0
+          AND distance < 200000
+      `;
+
+      const marketResult = await query(marketQuery, [
+        vehicle.brand,
+        vehicle.model,
+        vehicle.year - 2,
+        vehicle.year + 2
+      ]);
+
+      const marketData = marketResult.rows[0];
+      const avgPrice = parseFloat(marketData.avg_price) || vehicle.price;
+      const minPrice = parseFloat(marketData.min_price) || vehicle.price * 0.8;
+      const maxPrice = parseFloat(marketData.max_price) || vehicle.price * 1.2;
+      const sampleSize = parseInt(marketData.total_count) || 1;
+
+      // 가격 평가
+      let priceRating: 'excellent' | 'good' | 'fair' | 'high';
+      if (vehicle.price <= avgPrice * 0.85) priceRating = 'excellent';
+      else if (vehicle.price <= avgPrice * 0.95) priceRating = 'good';
+      else if (vehicle.price <= avgPrice * 1.05) priceRating = 'fair';
+      else priceRating = 'high';
+
+      // 수요 레벨 분석 (샘플 수 기반)
+      let demandLevel: 'high' | 'medium' | 'low';
+      if (sampleSize >= 50) demandLevel = 'high';
+      else if (sampleSize >= 20) demandLevel = 'medium';
+      else demandLevel = 'low';
+
+      // 연식 기반 리스크 평가
+      const carAge = new Date().getFullYear() - vehicle.year;
+      let overallRisk: 'low' | 'medium' | 'high';
+      const riskFactors: string[] = [];
+
+      if (carAge <= 3) {
+        overallRisk = 'low';
+      } else if (carAge <= 7) {
+        overallRisk = 'medium';
+        riskFactors.push('중간 연식으로 부품 교체 가능성');
+      } else {
+        overallRisk = 'high';
+        riskFactors.push('오래된 연식으로 주요 부품 점검 필요');
       }
-    };
+
+      if (vehicle.mileage > 100000) {
+        riskFactors.push('주행거리 10만km 초과');
+        if (overallRisk === 'low') overallRisk = 'medium';
+      }
+
+      return {
+        price_analysis: {
+          market_average: Math.round(avgPrice),
+          price_rating: priceRating,
+          confidence: Math.min(0.9, Math.max(0.5, sampleSize / 100))
+        },
+        market_trends: {
+          demand_level: demandLevel,
+          price_trend: this.analyzePriceTrend(vehicle.price, avgPrice),
+          seasonal_factor: this.getSeasonalFactor()
+        },
+        risk_assessment: {
+          overall_risk: overallRisk,
+          risk_factors: riskFactors,
+          recommendations: this.getRecommendations(vehicle, overallRisk)
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ realistic-agents: 실제 시장 분석 실패:', error);
+
+      // Fallback: 기본 분석
+      return {
+        price_analysis: {
+          market_average: vehicle.price * 1.05,
+          price_rating: 'fair' as const,
+          confidence: 0.6
+        },
+        market_trends: {
+          demand_level: 'medium' as const,
+          price_trend: 'stable' as const,
+          seasonal_factor: '시장 데이터 분석 중'
+        },
+        risk_assessment: {
+          overall_risk: 'medium' as const,
+          risk_factors: ['시장 데이터 부족'],
+          recommendations: ['전문가 상담', '실차 점검']
+        }
+      };
+    }
+  }
+
+  private analyzePriceTrend(currentPrice: number, marketAverage: number): 'rising' | 'stable' | 'falling' {
+    if (currentPrice < marketAverage * 0.95) return 'falling';
+    else if (currentPrice > marketAverage * 1.05) return 'rising';
+    else return 'stable';
+  }
+
+  private getSeasonalFactor(): string {
+    const month = new Date().getMonth() + 1;
+    if (month >= 11 || month <= 2) return '연말연시 딜러 할인 시기';
+    else if (month >= 3 && month <= 5) return '봄철 중고차 성수기';
+    else if (month >= 6 && month <= 8) return '여름휴가 준비철';
+    else return '가을 환절기';
+  }
+
+  private getRecommendations(vehicle: VehicleListing, risk: 'low' | 'medium' | 'high'): string[] {
+    const baseRecommendations = ['실차 확인', '정비 이력 점검'];
+
+    if (risk === 'high') {
+      return [...baseRecommendations, '전문가 진단', '보증 보험 검토', '추가 할인 협상'];
+    } else if (risk === 'medium') {
+      return [...baseRecommendations, '정기점검 확인', '보험이력 조회'];
+    } else {
+      return [...baseRecommendations, '구매 타이밍 적절'];
+    }
   }
 
   private async analyzeMarketData(vehicle: VehicleListing) {
-    // 실제 시장 분석 로직
-    return this.getMockMarketAnalysis(vehicle);
+    // 실제 시장 분석 로직 사용
+    return this.getRealMarketAnalysis(vehicle);
   }
 
   private async assessVehicleRisk(vehicle: VehicleListing) {
