@@ -180,7 +180,9 @@ export async function GET(request: NextRequest) {
           }
         } finally {
           try {
-            controller.close();
+            if (!streamClosed) {
+              controller.close();
+            }
           } catch (closeError) {
             console.error('🚨 Error closing controller:', closeError);
           }

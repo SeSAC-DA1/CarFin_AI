@@ -97,18 +97,14 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
     setMessages([userMessage]);
 
-    // 짧은 지연 후 AI 분석 시작 (중복 연결 방지)
-    const analysisTimer = setTimeout(() => {
-      startRealAIAnalysis(initialQuestion);
-    }, 100);
+    // AI 분석 즉시 시작
+    startRealAIAnalysis(initialQuestion);
 
     // Cleanup function
     return () => {
       console.log('Cleaning up ChatRoom');
-      clearTimeout(analysisTimer);
-      initialized.current = false;
     };
-  }, [initialQuestion]); // initialQuestion 의존성 유지하되 초기화 체크로 중복 방지
+  }, []); // 빈 의존성 배열로 변경하여 마운트 시에만 실행
 
   // 자연스러운 타이핑 효과를 위한 스트림 메시지 추가 함수
   const addStreamingMessage = (messageData: any, delay: number = 0) => {
