@@ -65,21 +65,73 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
     }
   };
 
-  const getCompleteImageUrl = (photo: string, platform: string) => {
-    if (!photo) return '';
+  const getVehicleImageUrl = (vehicle: any) => {
+    const { manufacturer, model } = vehicle;
 
-    // 이미 완전한 URL인 경우
-    if (photo.startsWith('http')) return photo;
+    // 차량 모델별 대표 이미지 매핑
+    const vehicleImages: { [key: string]: string } = {
+      // 현대 차량
+      '현대_벨로스터': 'https://images.unsplash.com/photo-1549399447-d3e49c3b6c6d?w=400&h=300&fit=crop',
+      '현대_아반떼': 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400&h=300&fit=crop',
+      '현대_소나타': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop',
+      '현대_투싼': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
+      '현대_산타페': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
+      '현대_캐스퍼': 'https://images.unsplash.com/photo-1627634777217-c864268db30c?w=400&h=300&fit=crop',
 
-    // 플랫폼별 베이스 URL 추가
-    switch (platform) {
-      case 'encar':
-        return `https://img1.encar.com${photo}01.jpg`;
-      case 'kbchachacha':
-        return `https://img.kbchachacha.com${photo}`;
-      default:
-        return photo;
+      // 기아 차량
+      '기아_K3': 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=400&h=300&fit=crop',
+      '기아_K5': 'https://images.unsplash.com/photo-1617814443181-2f9dcaaa6c37?w=400&h=300&fit=crop',
+      '기아_스포티지': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
+      '기아_쏘렌토': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
+      '기아_레이': 'https://images.unsplash.com/photo-1627634777217-c864268db30c?w=400&h=300&fit=crop',
+      '기아_모닝': 'https://images.unsplash.com/photo-1627634777217-c864268db30c?w=400&h=300&fit=crop',
+
+      // 벤츠 차량
+      '벤츠_C-클래스': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop',
+      '벤츠_E-클래스': 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop',
+      '벤츠_S-클래스': 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop',
+
+      // 아우디 차량
+      '아우디_A3': 'https://images.unsplash.com/photo-1549399447-d3e49c3b6c6d?w=400&h=300&fit=crop',
+      '아우디_A4': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop',
+      '아우디_Q5': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
+
+      // BMW 차량
+      'BMW_3시리즈': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop',
+      'BMW_5시리즈': 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop',
+      'BMW_X3': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
+    };
+
+    // 모델명 정규화 (공백, 특수문자 제거)
+    const normalizedModel = model.replace(/[^\w가-힣]/g, '').replace(/\s+/g, '');
+    const key = `${manufacturer}_${normalizedModel}`;
+
+    // 직접 매칭
+    if (vehicleImages[key]) {
+      return vehicleImages[key];
     }
+
+    // 부분 매칭 시도
+    for (const [vehicleKey, imageUrl] of Object.entries(vehicleImages)) {
+      if (vehicleKey.includes(manufacturer) &&
+          (vehicleKey.toLowerCase().includes(normalizedModel.toLowerCase()) ||
+           normalizedModel.toLowerCase().includes(vehicleKey.split('_')[1].toLowerCase()))) {
+        return imageUrl;
+      }
+    }
+
+    // 기본 이미지 (제조사별)
+    const defaultImages: { [key: string]: string } = {
+      '현대': 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400&h=300&fit=crop',
+      '기아': 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=400&h=300&fit=crop',
+      '벤츠': 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop',
+      '아우디': 'https://images.unsplash.com/photo-1549399447-d3e49c3b6c6d?w=400&h=300&fit=crop',
+      'BMW': 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop',
+      '폭스바겐': 'https://images.unsplash.com/photo-1549399447-d3e49c3b6c6d?w=400&h=300&fit=crop',
+      '쌍용': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
+    };
+
+    return defaultImages[manufacturer] || 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&h=300&fit=crop';
   };
 
   const handleDetailClick = () => {
@@ -132,18 +184,21 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
           <div className="w-80 flex-shrink-0">
             <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden relative">
               {(() => {
-                const imageUrl = vehicle.photo
-                  ? getCompleteImageUrl(vehicle.photo, vehicle.platform || 'encar')
-                  : vehicle.imageUrl;
+                // 차량 모델별 대표 이미지 사용
+                const imageUrl = getVehicleImageUrl(vehicle);
 
                 return imageUrl && !imageError ? (
-                  <Image
+                  <img
                     src={imageUrl}
                     alt={`${vehicle.manufacturer} ${vehicle.model}`}
-                    fill
-                    className="object-cover"
-                    onError={() => setImageError(true)}
-                    unoptimized={true}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      console.log('이미지 로딩 실패:', imageUrl);
+                      setImageError(true);
+                    }}
+                    onLoad={() => {
+                      console.log('이미지 로딩 성공:', imageUrl);
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-500">
@@ -154,9 +209,12 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
                         {vehicle.platform && getPlatformName(vehicle.platform)} 제공
                       </p>
                       {process.env.NODE_ENV === 'development' && (
-                        <p className="text-xs text-red-400 mt-1">
-                          Debug: {vehicle.photo || 'No photo'}
-                        </p>
+                        <div className="text-xs text-red-400 mt-1">
+                          <p>제조사: {vehicle.manufacturer}</p>
+                          <p>모델: {vehicle.model}</p>
+                          <p>대표이미지: {imageUrl}</p>
+                          <p>플랫폼: {vehicle.platform || 'No platform'}</p>
+                        </div>
                       )}
                     </div>
                   </div>
