@@ -1,6 +1,7 @@
 // HorizontalVehicleCard.tsx - 가로형 차량 추천 카드
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Car, DollarSign, Gauge, Calendar, MapPin, Fuel, Shield, Star, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 
 interface VehicleRecommendation {
@@ -64,6 +65,23 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
     }
   };
 
+  const getCompleteImageUrl = (photo: string, platform: string) => {
+    if (!photo) return '';
+
+    // 이미 완전한 URL인 경우
+    if (photo.startsWith('http')) return photo;
+
+    // 플랫폼별 베이스 URL 추가
+    switch (platform) {
+      case 'encar':
+        return `https://img1.encar.com${photo}01.jpg`;
+      case 'kbchachacha':
+        return `https://img.kbchachacha.com${photo}`;
+      default:
+        return photo;
+    }
+  };
+
   const handleDetailClick = () => {
     if (vehicle.detailurl) {
       window.open(vehicle.detailurl, '_blank');
@@ -112,25 +130,38 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
         <div className="flex gap-6 mb-6">
           {/* 차량 이미지 */}
           <div className="w-80 flex-shrink-0">
-            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden">
-              {(vehicle.photo || vehicle.imageUrl) && !imageError ? (
-                <img
-                  src={vehicle.photo || vehicle.imageUrl}
-                  alt={`${vehicle.manufacturer} ${vehicle.model}`}
-                  className="w-full h-full object-cover"
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <Car className="w-12 h-12 mx-auto mb-2" />
-                    <p className="text-sm">실제 차량 이미지</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {vehicle.platform && getPlatformName(vehicle.platform)} 제공
-                    </p>
+            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden relative">
+              {(() => {
+                const imageUrl = vehicle.photo
+                  ? getCompleteImageUrl(vehicle.photo, vehicle.platform || 'encar')
+                  : vehicle.imageUrl;
+
+                return imageUrl && !imageError ? (
+                  <Image
+                    src={imageUrl}
+                    alt={`${vehicle.manufacturer} ${vehicle.model}`}
+                    fill
+                    className="object-cover"
+                    onError={() => setImageError(true)}
+                    unoptimized={true}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    <div className="text-center">
+                      <Car className="w-12 h-12 mx-auto mb-2" />
+                      <p className="text-sm">실제 차량 이미지</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {vehicle.platform && getPlatformName(vehicle.platform)} 제공
+                      </p>
+                      {process.env.NODE_ENV === 'development' && (
+                        <p className="text-xs text-red-400 mt-1">
+                          Debug: {vehicle.photo || 'No photo'}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 
