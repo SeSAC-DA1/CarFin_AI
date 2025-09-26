@@ -763,7 +763,11 @@ export class DynamicCollaborationManager {
         cons: analysis.cons,
         suitabilityScore: analysis.score,
         tcoCost: analysis.tcoCost,
-        imageUrl: this.generateVehicleImageUrl(vehicle)
+        // 실제 매물 이미지와 URL 포함
+        photo: vehicle.photo,
+        detailurl: vehicle.detailurl,
+        platform: vehicle.platform,
+        originprice: vehicle.originprice
       });
     }
 
@@ -1067,7 +1071,11 @@ export class DynamicCollaborationManager {
         cons: analysis.cons,
         suitabilityScore: analysis.score,
         tcoCost: analysis.tcoCost,
-        imageUrl: this.generateVehicleImageUrl(vehicle)
+        // 실제 매물 이미지와 URL 포함
+        photo: vehicle.photo,
+        detailurl: vehicle.detailurl,
+        platform: vehicle.platform,
+        originprice: vehicle.originprice
       };
     }));
 

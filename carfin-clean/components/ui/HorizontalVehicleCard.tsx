@@ -113,9 +113,9 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
           {/* 차량 이미지 */}
           <div className="w-80 flex-shrink-0">
             <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden">
-              {vehicle.imageUrl && !imageError ? (
+              {(vehicle.photo || vehicle.imageUrl) && !imageError ? (
                 <img
-                  src={vehicle.imageUrl}
+                  src={vehicle.photo || vehicle.imageUrl}
                   alt={`${vehicle.manufacturer} ${vehicle.model}`}
                   className="w-full h-full object-cover"
                   onError={() => setImageError(true)}
@@ -124,7 +124,7 @@ export default function HorizontalVehicleCard({ vehicle, personaName, rank }: Ho
                 <div className="w-full h-full flex items-center justify-center text-gray-500">
                   <div className="text-center">
                     <Car className="w-12 h-12 mx-auto mb-2" />
-                    <p className="text-sm">차량 이미지</p>
+                    <p className="text-sm">실제 차량 이미지</p>
                     <p className="text-xs text-gray-400 mt-1">
                       {vehicle.platform && getPlatformName(vehicle.platform)} 제공
                     </p>
