@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Send, Database, CheckCircle } from 'lucide-react';
 import ChatRoom from '@/components/chat/ChatRoom';
 import PersonaDemoSelector from '@/components/demo/PersonaDemoSelector';
@@ -65,15 +65,17 @@ export default function Home() {
     }
   };
 
+  const handleBack = useCallback(() => {
+    setShowChatRoom(false);
+    setSelectedPersona(null);
+    setIsA2AActive(false);
+  }, []);
+
   if (showChatRoom) {
     return (
       <ChatRoom
         initialQuestion={initialQuestion}
-        onBack={() => {
-          setShowChatRoom(false);
-          setSelectedPersona(null);
-          setIsA2AActive(false);
-        }}
+        onBack={handleBack}
         selectedPersona={selectedPersona}
       />
     );

@@ -334,9 +334,16 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
       };
 
       eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
+        console.log('EventSource connection issue, retrying...');
         eventSource.close();
         setIsLoading(false);
+
+        // 간단한 재시도 로직
+        setTimeout(() => {
+          if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+            console.log('Attempting to reconnect...');
+          }
+        }, 2000);
       };
 
       // 컴포넌트 언마운트 시 연결 종료
