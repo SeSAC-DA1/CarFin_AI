@@ -42,6 +42,9 @@ export class CollaborationManager {
     this.maxRounds = 10; // 무한루프 방지
     this.currentRound = 0;
 
+    // SharedContext 기본값으로 초기화
+    this.sharedContext = new SharedContext('', [], { min: 0, max: 0, flexible: true, userConfirmed: false });
+
     this.initializeAgents();
   }
 

@@ -661,45 +661,10 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
                       {/* 차량 추천 카드 렌더링 */}
                       {message.messageType === 'vehicle_recommendations' && message.metadata?.vehicles ? (
-                        <div className="space-y-4">
-                          <div className="text-sm leading-relaxed text-gray-700 mb-4">
-                            <span>{message.content}</span>
-                            {message.isStreaming && (
-                              <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse">|</span>
-                            )}
-                          </div>
-
-                          {/* 세로형 순위 레이아웃 */}
-                          <div className="space-y-4">
-                            {(() => {
-                              // 차량 추천 데이터를 상태에 저장
-                              const vehicles = message.metadata.vehicles.sort((a: any, b: any) => a.rank - b.rank);
-                              if (vehicles.length > 0) {
-                                setLastVehicleRecommendations(vehicles);
-                              }
-                              return vehicles.map((vehicle: any, index: number) => (
-                                <div key={`vehicle-${index}`} className="flex-1">
-                                  <HorizontalVehicleCard
-                                    vehicle={vehicle}
-                                    personaName={message.metadata?.persona}
-                                    rank={vehicle.rank}
-                                  />
-                                </div>
-                              ));
-                            })()}
-                          </div>
-
-                          {/* 순위 비교 안내 */}
-                          <div className="text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center justify-center space-x-2 mb-2">
-                              <span className="text-lg">📋</span>
-                              <span className="font-medium">순위별 추천 차량</span>
-                            </div>
-                            <p className="text-xs">
-                              "{message.metadata?.persona || '고객'}님"의 라이프스타일에 맞춘 1순위부터 3순위까지의 차량 추천입니다
-                            </p>
-                          </div>
-                        </div>
+                        <VehicleRecommendationsDisplay
+                          message={message}
+                          onVehiclesUpdate={setLastVehicleRecommendations}
+                        />
                       ) : (
                         <div className="text-sm leading-relaxed">
                           <span>{message.content}</span>
@@ -787,6 +752,60 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// 차량 추천 표시 컴포넌트 (무한 렌더링 방지)
+function VehicleRecommendationsDisplay({
+  message,
+  onVehiclesUpdate
+}: {
+  message: Message;
+  onVehiclesUpdate: (vehicles: any[]) => void;
+}) {
+  const [vehicles, setVehicles] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (message.metadata?.vehicles) {
+      const sortedVehicles = [...message.metadata.vehicles].sort((a: any, b: any) => a.rank - b.rank);
+      setVehicles(sortedVehicles);
+      onVehiclesUpdate(sortedVehicles);
+    }
+  }, [message.metadata?.vehicles, onVehiclesUpdate]);
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm leading-relaxed text-gray-700 mb-4">
+        <span>{message.content}</span>
+        {message.isStreaming && (
+          <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse">|</span>
+        )}
+      </div>
+
+      {/* 세로형 순위 레이아웃 */}
+      <div className="space-y-4">
+        {vehicles.map((vehicle: any, index: number) => (
+          <div key={`vehicle-${vehicle.rank || index}`} className="flex-1">
+            <HorizontalVehicleCard
+              vehicle={vehicle}
+              personaName={message.metadata?.persona}
+              rank={vehicle.rank}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* 순위 비교 안내 */}
+      <div className="text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-center space-x-2 mb-2">
+          <span className="text-lg">📋</span>
+          <span className="font-medium">순위별 추천 차량</span>
+        </div>
+        <p className="text-xs">
+          "{message.metadata?.persona || '고객'}님"의 라이프스타일에 맞춘 1순위부터 3순위까지의 차량 추천입니다
+        </p>
       </div>
     </div>
   );

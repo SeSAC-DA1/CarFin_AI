@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     const multiAgentSystem = new MultiAgentSystem(process.env.GEMINI_API_KEY!);
 
     // 실제 3-Agent 협업 실행 (Mock 없음!)
-    const collaboration = await multiAgentSystem.executeA2ACollaboration(question, context, vehicles);
+    const collaboration = await multiAgentSystem.executeA2ACollaboration(question, context || 'real_ai_analysis', vehicles);
 
     console.log('✅ A2A 협업 완료');
 

@@ -72,10 +72,17 @@ export async function GET(request: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       (async () => {
+        let streamClosed = false;
         try {
           // 실제 차량 데이터 검색
-          const budget = extractBudget(question);
-          const vehicles = await searchVehicles(budget);
+          const budgetRange = extractBudget(question);
+          const budget = {
+            min: budgetRange.min,
+            max: budgetRange.max,
+            flexible: true,
+            userConfirmed: false
+          };
+          const vehicles = await searchVehicles(budgetRange);
 
           console.log(`💰 Budget: ${budget.min}-${budget.max}만원`);
           console.log(`🚗 Found ${vehicles.length} real vehicles from PostgreSQL`);
@@ -95,8 +102,6 @@ export async function GET(request: NextRequest) {
           );
 
           console.log('🎯 동적 A2A 협업 시스템 시작');
-
-          let streamClosed = false;
 
           // 동적 협업 실행 (이전 추천 차량 데이터 포함)
           for await (const event of collaborationManager.startDynamicCollaboration(question, vehicles, budget, previousVehicles)) {

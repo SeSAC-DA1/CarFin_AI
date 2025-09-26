@@ -61,7 +61,7 @@ export class DynamicCollaborationManager {
   private genAI: GoogleGenerativeAI;
   private patternDetector: CollaborationPatternDetector;
   private sharedContext: SharedContext;
-  private currentPattern: CollaborationPattern | null = null;
+  private currentPattern: CollaborationPattern | undefined = undefined;
   private collaborationRound = 0;
   private maxRounds = 7;
   private messageQueue: AgentMessage[] = [];
@@ -70,6 +70,9 @@ export class DynamicCollaborationManager {
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.patternDetector = new CollaborationPatternDetector();
+
+    // SharedContext 기본값으로 초기화
+    this.sharedContext = new SharedContext('', [], { min: 0, max: 0, flexible: true, userConfirmed: false });
   }
 
   /**
@@ -1055,7 +1058,7 @@ export class DynamicCollaborationManager {
 
     // 재랭킹된 결과 생성
     const updatedVehicles = await Promise.all(finalVehicles.map(async (vehicle: any, index: number) => {
-      const analysis = await this.generateVehicleAnalysis(vehicle, index + 1, question);
+      const analysis = await this.generateVehicleAnalysis(vehicle, this.currentPattern?.persona || null, 'reranking', index + 1);
       return {
         ...vehicle,
         rank: index + 1,
@@ -1075,7 +1078,7 @@ export class DynamicCollaborationManager {
       timestamp: new Date(),
       metadata: {
         vehicles: updatedVehicles,
-        persona: this.extractPersonaFromQuestion(question),
+        persona: this.currentPattern?.persona || null,
         isReranked: true
       }
     };

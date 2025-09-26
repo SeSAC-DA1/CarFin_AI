@@ -62,8 +62,14 @@ export async function GET(request: NextRequest) {
       (async () => {
         try {
           // 실제 차량 데이터 검색
-          const budget = extractBudget(question);
-          const vehicles = await searchVehicles(budget);
+          const budgetRange = extractBudget(question);
+          const budget = {
+            min: budgetRange.min,
+            max: budgetRange.max,
+            flexible: true,
+            userConfirmed: false
+          };
+          const vehicles = await searchVehicles(budgetRange);
 
           console.log(`💰 Budget: ${budget.min}-${budget.max}만원`);
           console.log(`🚗 Found ${vehicles.length} real vehicles from PostgreSQL`);
