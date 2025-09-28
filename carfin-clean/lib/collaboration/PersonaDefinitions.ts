@@ -1,7 +1,7 @@
 // PersonaDefinitions.ts - 초공감 현실 페르소나 5개 (완전 리뉴얼)
 
 export interface DemoPersona {
-  id: 'first_car_anxiety' | 'working_mom' | 'mz_office_worker' | 'camping_lover' | 'large_family_dad';
+  id: 'first_car_anxiety' | 'working_mom' | 'mz_office_worker' | 'camping_lover' | 'large_family_dad' | 'ceo_executive';
   name: string;
   emoji: string;
   age: number;
@@ -198,6 +198,43 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     },
     expectedPattern: 'LARGE_FAMILY',
     keyPhrases: ['대가족', '9인승', '승합차', '다인용', '7명']
+  },
+
+  // 6. 김정훈 - CEO, 골프와 비즈니스의 품격
+  {
+    id: 'ceo_executive',
+    name: '김정훈',
+    emoji: '👔',
+    age: 44,
+    occupation: 'IT 중소기업 대표 (직원 120명, 연매출 150억)',
+    situation: '회사 성장하면서 골프 접대도 늘고, 브랜드 이미지도 중요해졌어요',
+    personalStory: '창업한 지 15년째인데, 이제 거래처 사장님들과 골프도 치고... 법인차로 등록해서 세금혜택도 받고 싶어요',
+    realConcerns: [
+      '골프백이 들어갈까? 캐디백 + 골프화까지 🏌️‍♂️',
+      '거래처 사장님들과 만날 때 부끄럽지 않을까?',
+      '법인차로 등록해서 세금 혜택 받을 수 있을까? 💰',
+      '직원들이 "사장님 차 너무 좋네요"라고 할까? (부담스러워서)',
+      '아내가 "너무 비싸다"고 하면 어떡하지? 😅',
+      '중고차인게 들키면 체면이... (신차처럼 보였으면)'
+    ],
+    budget: { min: 4500, max: 7000 },
+    priorities: ['골프백 수납', '브랜드 프리스티지', '법인차 세금혜택', '비즈니스 미팅 적합성', '연비 vs 체면 균형'],
+    sampleQuestions: [
+      '법인차로 등록할 수 있는 중형세단 추천해주세요',
+      '골프 치러 다니기 좋은 차 있나요? 세금혜택도 받고 싶어요',
+      '거래처 사장님들과 만날 때 부끄럽지 않은 차 추천',
+      '브랜드는 좋은데 유지비 부담 안 되는 차 있을까요?'
+    ],
+    collaborationFlow: ['concierge', 'needs_analyst', 'data_analyst'],
+    theme: {
+      color: 'slate',
+      bgColor: 'bg-slate-50',
+      borderColor: 'border-slate-300',
+      icon: '🏢',
+      description: '기업가의 품격'
+    },
+    expectedPattern: 'CEO_BUSINESS',
+    keyPhrases: ['CEO', '사장', '법인차', '골프', '세금혜택', '접대', '브랜드']
   }
 ];
 
@@ -227,6 +264,11 @@ export const PERSONA_MESSAGES = {
     welcome: "대가족의 든든한 기둥! 7명이 모두 편안한 차량을 찾아드릴게요. 다인용차의 모든 것을 분석해드릴게요! 🏠",
     priority: "대가족 가장에게는 넓은 공간과 연료 경제성, 그리고 승하차 편의성이 가장 중요하죠!",
     budget_comment: "9인승 승합차부터 대형 SUV까지, 대가족에게 최적화된 차량을 추천드릴게요."
+  },
+  ceo_executive: {
+    welcome: "기업가로서의 품격과 실용성을 모두 갖춘 차량을 찾아드릴게요! 골프와 비즈니스, 두 마리 토끼를 모두 잡아보세요 🏢",
+    priority: "CEO에게는 브랜드 프리스티지와 골프백 수납, 그리고 법인차 세금혜택이 가장 중요하죠!",
+    budget_comment: "이 예산대라면 독일 프리미엄 브랜드도 충분히 고려할 수 있어요. 법인차 등록으로 세금혜택까지!"
   }
 };
 

@@ -199,15 +199,26 @@ export default function Home() {
                 placeholder='예: "첫차 사는데 너무 무서워요... 뭘 살지 모르겠어요 ㅠㅠ"'
                 className="flex-1 text-lg px-6 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 disabled={isLoading}
+                aria-label="차량 구매 상담 내용 입력"
+                aria-describedby="input-help"
+                role="textbox"
+                aria-required="true"
               />
               <button
                 onClick={handleSubmit}
                 disabled={isLoading || !question.trim()}
-                className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 hover:scale-105 hover:shadow-lg active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none transition-all duration-200 flex items-center space-x-2 transform focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-label="AI 전문가팀에게 차량 분석 요청"
+                type="submit"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-5 h-5" aria-hidden="true" />
                 <span>분석 시작</span>
               </button>
+            </div>
+
+            {/* 접근성을 위한 숨겨진 도움말 */}
+            <div id="input-help" className="sr-only">
+              차량 구매에 대한 고민이나 질문을 자유롭게 입력해주세요. 3명의 AI 전문가가 도와드립니다.
             </div>
 
             {/* 페르소나별 시연 시스템 */}
@@ -218,7 +229,7 @@ export default function Home() {
                     onClick={() => setShowPersonaDemo(true)}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
-                    🎭 5개 페르소나별 A2A 시연 보기
+                    🎭 6개 페르소나별 A2A 시연 보기
                   </button>
                   <p className="text-sm text-gray-600 mt-2">
                     다양한 고객 유형별로 어떻게 다른 A2A 협업이 이루어지는지 확인해보세요
@@ -247,63 +258,6 @@ export default function Home() {
               />
             </div>
 
-            {!showPersonaDemo && (
-              <>
-                {/* 시연용 샘플 질문 버튼들 */}
-                <div className="mt-6">
-                  <p className="text-center text-sm text-gray-600 mb-4">
-                    💡 <strong>바로 체험해보기:</strong> 각 상황에 공감되시나요? 버튼만 눌러보세요!
-                  </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <button
-                  onClick={() => setQuestion("첫차 사려는데 너무 무서워요... 혼자 사기엔 너무 복잡하고 사기당할까봐 걱정돼요")}
-                  className="p-3 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors text-left"
-                >
-                  😨 <strong>첫차 불안러</strong><br/>
-                  <span className="text-xs text-blue-600">"무서워요... 사기당할까봐 걱정돼요"</span>
-                </button>
-                <button
-                  onClick={() => setQuestion("4살 아이 있는 워킹맘이에요. 아이 안전하게 태우고 주말에 가족여행도 갈 수 있는 차량이 뭐가 좋을까요?")}
-                  className="p-3 text-sm bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg transition-colors text-left"
-                >
-                  👩‍💼 <strong>육아맘</strong><br/>
-                  <span className="text-xs text-pink-600">"아이 안전하게 태우고 가족여행도..."</span>
-                </button>
-                <button
-                  onClick={() => setQuestion("회사 동기들은 다 좋은 차 타는데 나만 안 멋있어요ㅠㅠ 인스타에도 올릴 만한 세련된 차 없나요?")}
-                  className="p-3 text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg transition-colors text-left"
-                >
-                  📱 <strong>MZ직장인</strong><br/>
-                  <span className="text-xs text-purple-600">"인스타에 올릴만한 세련된 차..."</span>
-                </button>
-                <button
-                  onClick={() => setQuestion("캠핑 다니는 게 취미인데 차 안에서 잠도 자고 장비도 많이 실을 수 있는 차량이 있을까요? 차박 가능한 걸로요!")}
-                  className="p-3 text-sm bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg transition-colors text-left"
-                >
-                  🏕️ <strong>캠핑러버</strong><br/>
-                  <span className="text-xs text-green-600">"차박도 되고 장비도 많이 실을 수 있는..."</span>
-                </button>
-                <button
-                  onClick={() => setQuestion("가족들 안전하게 태우면서도 기름값이나 보험료 부담스럽지 않은 경제적인 차량이 뭐가 있을까요?")}
-                  className="p-3 text-sm bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-left"
-                >
-                  👨‍👧‍👦 <strong>현실적 가장</strong><br/>
-                  <span className="text-xs text-amber-600">"안전하면서도 경제적인 차..."</span>
-                </button>
-                <button
-                  onClick={() => setQuestion("SUV 하나 사려고 하는데 가족 4명이 타고 예산은 2500만원 정도예요. 뭐가 좋을까요?")}
-                  className="p-3 text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg transition-colors text-left"
-                >
-                  🚗 <strong>기본 상담</strong><br/>
-                  <span className="text-xs text-gray-600">"가족 4명, 예산 2500만원으로 SUV..."</span>
-                </button>
-              </div>
-              <p className="text-center text-xs text-gray-500 mt-3">
-                👆 클릭만 하면 AI가 바로 당신 상황에 맞는 차량 분석을 시작해드려요
-              </p>
-            </div>
-              </>
-            )}
           </div>
         </div>
 

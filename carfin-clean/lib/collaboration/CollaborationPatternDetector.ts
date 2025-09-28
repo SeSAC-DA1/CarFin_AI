@@ -16,7 +16,7 @@ export interface CollaborationPattern {
         'EXPERT_DISAGREEMENT' | 'PROGRESSIVE_REFINEMENT' | 'STANDARD_FLOW' |
         // 페르소나 기반 패턴들 (리뉴얼)
         'FIRST_CAR_ANXIETY' | 'FAMILY_PRIORITY' | 'MZ_LIFESTYLE' |
-        'CAMPING_LIFESTYLE' | 'LARGE_FAMILY';
+        'CAMPING_LIFESTYLE' | 'LARGE_FAMILY' | 'CEO_BUSINESS';
   priority: number; // 1-5, 높을수록 긴급
   description: string;
   expectedDuration: number; // 예상 소요 시간 (분)
@@ -278,7 +278,8 @@ export class CollaborationPatternDetector {
       'working_mom': 'FAMILY_PRIORITY' as const,
       'mz_office_worker': 'MZ_LIFESTYLE' as const,
       'camping_lover': 'CAMPING_LIFESTYLE' as const,
-      'large_family_dad': 'LARGE_FAMILY' as const
+      'large_family_dad': 'LARGE_FAMILY' as const,
+      'ceo_executive': 'CEO_BUSINESS' as const
     };
 
     const patternType = patternMap[persona.id];

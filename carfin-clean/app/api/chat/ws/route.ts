@@ -2,6 +2,22 @@ import { NextRequest } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { searchVehicles } from '@/lib/database';
 import { DynamicCollaborationManager } from '@/lib/collaboration/DynamicCollaborationManager';
+import { PersonaDetector } from '@/lib/collaboration/PersonaDefinitions';
+
+// 리스 의도 감지 함수
+function detectLeaseIntent(question: string): boolean {
+  const leaseKeywords = [
+    '리스', 'lease', '렌트', '렌탈', '장기렌트', '월납', '월기렌트',
+    '리스 계약', '리스 차량', '리스 상품', '월지불', '월결제',
+    '리스료', '렌트료', '월기 렌트', '할부', '리스비'
+  ];
+
+  const normalizedQuestion = question.toLowerCase().replace(/\s/g, '');
+
+  return leaseKeywords.some(keyword =>
+    normalizedQuestion.includes(keyword.toLowerCase().replace(/\s/g, ''))
+  );
+}
 
 // 예산 추출 함수 (기존 코드 유지)
 function extractBudget(question: string): { min: number; max: number } {
@@ -26,7 +42,7 @@ function extractBudget(question: string): { min: number; max: number } {
       if (numbers.length > 0) {
         budgetAmount = Math.max(...numbers);
 
-        // 천만원, 억 단위 처리
+        // 천만원 단위 처리
         if (question.includes('천만원')) {
           budgetAmount = budgetAmount * 1000;
         } else if (question.includes('억')) {
@@ -66,7 +82,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log(`🚀 Dynamic A2A Collaboration Started: "${question}" [${context}]`);
+  console.log(`🤖 Dynamic A2A Collaboration Started: "${question}" [${context}]`);
 
   // Server-Sent Events 설정
   const stream = new ReadableStream({
@@ -82,10 +98,19 @@ export async function GET(request: NextRequest) {
             flexible: true,
             userConfirmed: false
           };
-          const vehicles = await searchVehicles(budgetRange);
+
+          // 페르소나 감지
+          const detectedPersona = PersonaDetector.detectPersona(question, budgetRange);
+
+          // 리스 의도 감지
+          const includeLeaseProducts = detectLeaseIntent(question);
+
+          const vehicles = await searchVehicles(budgetRange, question, undefined, detectedPersona, includeLeaseProducts);
 
           console.log(`💰 Budget: ${budget.min}-${budget.max}만원`);
           console.log(`🚗 Found ${vehicles.length} real vehicles from PostgreSQL`);
+          console.log(`👤 Detected Persona: ${detectedPersona ? `${detectedPersona.name} (${detectedPersona.id})` : 'None'}`);
+          console.log(`📋 Lease Products: ${includeLeaseProducts ? 'INCLUDED' : 'EXCLUDED (only regular sales)'}`);
 
           // 동적 협업 매니저 초기화
           const collaborationManager = new DynamicCollaborationManager(process.env.GEMINI_API_KEY!);
@@ -96,15 +121,21 @@ export async function GET(request: NextRequest) {
               type: 'metadata',
               budget: budget,
               vehiclesFound: vehicles.length,
+              detectedPersona: detectedPersona ? {
+                id: detectedPersona.id,
+                name: detectedPersona.name,
+                emoji: detectedPersona.emoji,
+                priorities: detectedPersona.priorities
+              } : null,
               timestamp: new Date().toISOString(),
               collaborationType: 'dynamic'
             })}\n\n`
           );
 
-          console.log('🎯 동적 A2A 협업 시스템 시작');
+          console.log('🚀 동적 A2A 협업 세션 시작');
 
-          // 동적 협업 실행 (이전 추천 차량 데이터 포함)
-          for await (const event of collaborationManager.startDynamicCollaboration(question, vehicles, budget, previousVehicles)) {
+          // 동적 협업 실행 (페르소나 정보 포함)
+          for await (const event of collaborationManager.startDynamicCollaboration(question, vehicles, budget, previousVehicles, detectedPersona)) {
 
             // 스트림이 이미 닫혔으면 중단
             if (streamClosed) {
@@ -141,12 +172,17 @@ export async function GET(request: NextRequest) {
                   break;
 
                 case 'user_intervention_needed':
-                  console.log(`🛑 User intervention needed: ${event.metadata?.interventionType}`);
+                  console.log(`🙋 User intervention needed: ${event.metadata?.interventionType}`);
+                  break;
+
+                case 'vehicle_recommendations':
+                  console.log(`🚗 Vehicle recommendations sent with ${event.metadata?.vehicles?.length || 0} vehicles`);
                   break;
 
                 case 'collaboration_complete':
                   console.log(`✅ Collaboration complete after ${event.metadata?.totalRounds} rounds`);
-                  streamClosed = true; // 스트림 종료 플래그 설정
+                  // 협업 완료 이벤트 전송 후 스트림 종료 준비로 설정
+                  streamClosed = true;
                   break;
 
                 case 'error':
@@ -155,21 +191,28 @@ export async function GET(request: NextRequest) {
                   break;
               }
 
-              // 협업 완료 시 종료
+              // 협업 완료 시 종료 (이벤트 전송 후)
               if (event.type === 'collaboration_complete') {
+                console.log('🏁 Collaboration completed, ending stream');
                 break;
               }
             } catch (controllerError) {
-              console.error('🚨 Controller Error:', controllerError);
+              console.error('💥 Controller Error:', controllerError);
               streamClosed = true;
               break;
             }
           }
 
-          console.log('🎉 Dynamic A2A 협업 완료!');
+          // 모든 이벤트 처리 완료 후 스트림 종료
+          if (!streamClosed) {
+            console.log('🎉 All events processed, closing stream gracefully');
+            streamClosed = true;
+          }
+
+          console.log('✨ Dynamic A2A 협업 완료!');
 
         } catch (error) {
-          console.error('🚨 Dynamic Collaboration Error:', error);
+          console.error('💥 Dynamic Collaboration Error:', error);
           streamClosed = true;
           try {
             controller.enqueue(
@@ -181,15 +224,19 @@ export async function GET(request: NextRequest) {
               })}\n\n`
             );
           } catch (enqueueError) {
-            console.error('🚨 Error sending error message:', enqueueError);
+            console.error('💥 Error sending error message:', enqueueError);
           }
         } finally {
           try {
             if (!streamClosed) {
+              console.log('⚠️ Finally block - closing controller gracefully');
               controller.close();
+            } else {
+              console.log('✅ Stream already properly closed');
             }
           } catch (closeError) {
-            console.error('🚨 Error closing controller:', closeError);
+            // Controller might already be closed, which is expected
+            console.log('ℹ️ Controller already closed (expected):', closeError.message);
           }
         }
       })();

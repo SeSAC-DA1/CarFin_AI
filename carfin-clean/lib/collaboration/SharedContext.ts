@@ -1,5 +1,7 @@
 // SharedContext.ts - 에이전트들이 공유하는 협업 데이터 구조
 
+import { DemoPersona } from './PersonaDefinitions';
+
 export interface VehicleData {
   manufacturer: string;
   model: string;
@@ -65,11 +67,13 @@ export class SharedContext {
   public agentInsights: Map<string, AgentInsight[]>;
   public collaborationState: CollaborationState;
   public conversationHistory: any[];
+  public detectedPersona: DemoPersona | null;
 
-  constructor(question: string, vehicleData: VehicleData[], budget: Budget) {
+  constructor(question: string, vehicleData: VehicleData[], budget: Budget, persona: DemoPersona | null = null) {
     this.originalQuestion = question;
     this.vehicleData = vehicleData;
     this.budget = budget;
+    this.detectedPersona = persona;
     this.userNeeds = {
       primary: [],
       secondary: [],

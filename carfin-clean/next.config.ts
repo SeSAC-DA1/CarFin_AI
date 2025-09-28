@@ -23,6 +23,29 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
+    // node: 프로토콜 처리를 위한 alias 설정 (서버 사이드에서만)
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "node:crypto": "crypto",
+      };
+    } else {
+      // 클라이언트 사이드에서는 fallback 설정
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        "crypto": false,
+        "node:crypto": false,
+      };
+
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "node:crypto": false,
+      };
+    }
+
+    return config;
+  },
 };
 
 export default nextConfig;

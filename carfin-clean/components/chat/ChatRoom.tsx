@@ -1,9 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, ArrowLeft, Users } from 'lucide-react';
+import { Send, ArrowLeft, Users, RotateCcw } from 'lucide-react';
 import A2AVisualization from '@/components/ui/A2AVisualization';
 import HorizontalVehicleCard from '@/components/ui/HorizontalVehicleCard';
+import AgentInsightCard from '@/components/ui/AgentInsightCard';
+import VehicleRecommendationSummary from '@/components/ui/VehicleRecommendationSummary';
+import NthQuestionWelcomeBanner from '@/components/welcome/NthQuestionWelcomeBanner';
+import QuestionProgressBar from '@/components/welcome/QuestionProgressBar';
+import CarFinWaitingUI from '@/components/ui/CarFinWaitingUI';
 import { DemoPersona } from '@/lib/collaboration/PersonaDefinitions';
 
 interface Message {
@@ -55,6 +60,179 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
   const initialized = useRef(false);
   const [autoScroll, setAutoScroll] = useState(true); // 자동 스크롤 제어
   const [lastVehicleRecommendations, setLastVehicleRecommendations] = useState<any[]>([]); // 이전 추천 차량들
+  const [showThinkingProcess, setShowThinkingProcess] = useState(false); // GPT Thinking Toggle
+  const [analysisComplete, setAnalysisComplete] = useState(false); // 분석 완료 상태
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false); // 상세 분석 표시
+  // 로딩 메시지 다양화 함수
+  const getLoadingMessages = () => {
+    const mainMessages = [
+      "전문가들이 머리를 맞대고 있어요... 🤝",
+      "117,564대 매물을 꼼꼼히 분석 중... 🔍",
+      "니즈 분석가가 열심히 고민하고 있어요... 💭",
+      "데이터 분석가가 계산기를 두드리고 있어요... 📊",
+      "컨시어지가 완벽한 답을 준비 중... 🎯",
+      "AI 전문가팀이 총력 분석 중... 🚀",
+      "최적의 매물을 찾기 위해 노력 중... 💎"
+    ];
+
+    const subMessages = [
+      "실시간 데이터를 기반으로 최적의 답변을 준비하고 있어요 😊",
+      "당신만을 위한 특별한 추천을 준비하고 있어요 ✨",
+      "숨겨진 보석 같은 매물을 찾고 있어요 💎",
+      "완벽한 매칭을 위해 세심하게 분석 중이에요 🎯",
+      "최고의 가성비 차량을 선별하고 있어요 🏆",
+      "전문가들이 당신의 니즈를 완벽히 파악 중... 🔬",
+      "117,564대 중에서 최고만 골라드릴게요 🌟"
+    ];
+
+    const randomMain = mainMessages[Math.floor(Math.random() * mainMessages.length)];
+    const randomSub = subMessages[Math.floor(Math.random() * subMessages.length)];
+
+    return { main: randomMain, sub: randomSub };
+  };
+
+  const [questionCount, setQuestionCount] = useState(0);
+  const [loadingMessages] = useState(() => getLoadingMessages()); // 로딩 메시지 고정
+  const [welcomeSystemInitialized, setWelcomeSystemInitialized] = useState(false);
+  const [detectedPersonaForWelcome, setDetectedPersonaForWelcome] = useState<string | undefined>();
+  const [budgetForWelcome, setBudgetForWelcome] = useState<{ min: number; max: number } | undefined>();
+
+  // 🔄 A2A 세션 관리 상태
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>('');
+  const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
+  const [sessionStats, setSessionStats] = useState<any>(null);
+
+  // 🔧 사용자 ID 초기화 및 이전 대화 복원
+  useEffect(() => {
+    const initializeUserSession = async () => {
+      let storedUserId = sessionStorage.getItem('carfin_userId');
+
+      if (!storedUserId) {
+        storedUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('carfin_userId', storedUserId);
+      }
+
+      setUserId(storedUserId);
+
+      // 기존 세션 ID 확인
+      const storedSessionId = sessionStorage.getItem('carfin_sessionId');
+      if (storedSessionId) {
+        setCurrentSessionId(storedSessionId);
+        // 이전 대화 복원 시도
+        await restoreConversationHistory(storedUserId);
+      }
+    };
+
+    initializeUserSession();
+  }, []);
+
+  // 📝 대화 저장 함수
+  const saveConversation = async (newMessages: Message[]) => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch('/api/conversation/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, messages: newMessages })
+      });
+
+      if (response.ok) {
+        console.log(`💾 대화 저장 완료: ${newMessages.length}개 메시지`);
+      }
+    } catch (error) {
+      console.error('❌ 대화 저장 실패:', error);
+    }
+  };
+
+  // 🔄 이전 대화 복원 함수
+  const restoreConversationHistory = async (userIdToRestore: string) => {
+    try {
+      const response = await fetch(`/api/conversation/get?userId=${userIdToRestore}`);
+
+      if (response.ok) {
+        const savedMessages = await response.json();
+        if (savedMessages && savedMessages.length > 0) {
+          setConversationHistory(savedMessages);
+          console.log(`🔄 이전 대화 복원: ${savedMessages.length}개 메시지`);
+
+          // 질문 수 계산
+          const userQuestions = savedMessages.filter((msg: Message) => msg.agent === 'user').length;
+          setQuestionCount(userQuestions);
+        }
+      }
+    } catch (error) {
+      console.error('❌ 대화 복원 실패:', error);
+    }
+  };
+
+  // 🗑️ 대화 기록 삭제 함수
+  const clearConversationHistory = async () => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch('/api/conversation/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      if (response.ok) {
+        setConversationHistory([]);
+        setMessages([]);
+        setQuestionCount(0);
+        setCurrentSessionId(null);
+        sessionStorage.removeItem('carfin_sessionId');
+        console.log('🗑️ 대화 기록 삭제 완료');
+      }
+    } catch (error) {
+      console.error('❌ 대화 기록 삭제 실패:', error);
+    }
+  };
+
+  // 📝 메시지 업데이트 시 자동 저장
+  useEffect(() => {
+    if (messages.length > 0 && userId) {
+      saveConversation(messages);
+    }
+  }, [messages, userId]);
+
+  // 🆔 세션 ID 저장
+  useEffect(() => {
+    if (currentSessionId) {
+      sessionStorage.setItem('carfin_sessionId', currentSessionId);
+    }
+  }, [currentSessionId]);
+
+  // 분석 완료 상태 감지
+  useEffect(() => {
+    const hasVehicleRecommendations = messages.some(msg => msg.messageType === 'vehicle_recommendations');
+    if (hasVehicleRecommendations && !analysisComplete) {
+      setAnalysisComplete(true);
+    }
+  }, [messages, analysisComplete]);
+
+  // N번째 질문 환영 메시지 함수
+  const getWelcomeMessage = (count: number) => {
+    const messages = [
+      "🎉 첫 질문이네요! 편하게 말씀해주세요",
+      "🤔 더 궁금한 게 있으시군요! 좋아요",
+      "😊 꼼꼼하시네요! 정확한 분석 가능해요",
+      "👏 정말 신중하십니다! 완벽한 매칭 예상",
+      "🌟 VIP 고객님이시네요! 프리미엄 서비스",
+      "💎 전문가다운 접근! 최고 품질 분석",
+      "🎯 완벽주의자시네요! 100% 만족 보장",
+      "🚀 탐구정신 대단! 숨은 보석 찾아드릴게요",
+      "🔥 열정적이시네요! 특별 매물 준비 중",
+      "⭐ 레전드 고객! 모든 전문가 총동원"
+    ];
+
+    if (count <= messages.length) {
+      return messages[count - 1];
+    }
+    return `🎊 ${count}번째 질문! 당신은 진정한 자동차 전문가!`;
+  }; // N번째 질문 카운터
 
   // 스마트 자동 스크롤 (사용자가 위로 스크롤했으면 자동 스크롤 중지)
   const scrollToBottom = () => {
@@ -96,6 +274,7 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     };
 
     setMessages([userMessage]);
+    setQuestionCount(1); // 첫 번째 질문
 
     // AI 분석 즉시 시작
     startRealAIAnalysis(initialQuestion);
@@ -151,6 +330,7 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
     setIsLoading(true);
     setAnalysisStatus(prev => ({ ...prev, questionAnalysis: 'in_progress' }));
+    setAnalysisComplete(false); // 새로운 분석 시작 시 완료 상태 리셋
 
     try {
       console.log('🚀 Starting WebSocket streaming analysis...');
@@ -190,6 +370,22 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
               console.log(`🚗 Found ${data.vehiclesFound} vehicles`);
               setDbStats({ totalVehicles: data.vehiclesFound, searchedVehicles: data.vehiclesFound });
               setAnalysisStatus(prev => ({ ...prev, questionAnalysis: 'completed', dataSearch: 'in_progress' }));
+
+              // 🆔 A2A 세션 ID 추출 및 저장
+              if (data.metadata?.sessionId && !currentSessionId) {
+                setCurrentSessionId(data.metadata.sessionId);
+                console.log(`🤖 A2A 세션 ID 설정: ${data.metadata.sessionId}`);
+              }
+
+              // 환영 시스템을 위한 정보 설정
+              if (!welcomeSystemInitialized) {
+                setBudgetForWelcome(data.budget);
+                if (data.detectedPersona?.id) {
+                  setDetectedPersonaForWelcome(data.detectedPersona.id);
+                }
+                setWelcomeSystemInitialized(true);
+              }
+
               if (data.collaborationType === 'dynamic') {
                 console.log('🎯 동적 협업 모드 활성화');
               }
@@ -272,7 +468,16 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
               break;
 
             case 'vehicle_recommendations':
-              console.log('🚗 Vehicle recommendations received');
+              console.log('🚗 Vehicle recommendations received', data);
+              console.log('🚗 Metadata:', data.metadata);
+              console.log('🚗 Vehicles:', data.metadata?.vehicles);
+
+              // 차량 추천 데이터를 상태에 저장
+              if (data.metadata?.vehicles && Array.isArray(data.metadata.vehicles)) {
+                setLastVehicleRecommendations(data.metadata.vehicles);
+                console.log('✅ Vehicle recommendations set to state:', data.metadata.vehicles.length, 'vehicles');
+              }
+
               addStreamingMessage({
                 agent: data.agent,
                 content: data.content,
@@ -295,6 +500,9 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
                 dataSearch: 'completed',
                 collaboration: 'completed'
               });
+
+              // 분석 완료 상태로 설정하여 차량 추천 UI 표시
+              setAnalysisComplete(true);
 
               addStreamingMessage({
                 agent: 'system',
@@ -366,6 +574,7 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     setMessages(prev => [...prev, userMessage]);
     const question = inputValue;
     setInputValue('');
+    setQuestionCount(prev => prev + 1); // 질문 카운터 증가
 
     // 추가 질문도 WebSocket 스트리밍으로 처리
     startRealAIAnalysis(question);
@@ -427,163 +636,137 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     }
   };
 
+  // 메시지 필터링: 분석 과정 vs 최종 결과
+  const isThinkingMessage = (message: Message) => {
+    // 진짜 상세한 분석 과정만 필터링 (agent_question, agent_answer는 핵심 인사이트이므로 보여줌)
+    return ['detailed_analysis', 'internal_process'].includes(message.messageType || '');
+  };
+
+  const isFinalResult = (message: Message) => {
+    return ['vehicle_recommendations', 'system_info'].includes(message.messageType || '') ||
+           (message.messageType === 'system_info' && message.content.includes('분석이 완료'));
+  };
+
+  const isCoreInsight = (message: Message) => {
+    // AI 에이전트들의 핵심 인사이트는 항상 표시
+    return ['agent_response', 'pattern_detected'].includes(message.messageType || '') ||
+           ['needs_analyst', 'data_analyst', 'concierge'].includes(message.agent);
+  };
+
+  const displayMessages = showThinkingProcess
+    ? messages
+    : messages.filter(msg =>
+        msg.agent === 'user' ||
+        isFinalResult(msg) ||
+        isCoreInsight(msg) ||
+        (!isThinkingMessage(msg) && !isFinalResult(msg))
+      );
+
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* 좌측 사이드바 */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      {/* 좌측 사이드바 - 데스크톱에서만 표시, 너비 축소 */}
+      <div className="hidden lg:flex w-64 xl:w-72 bg-white border-r border-gray-200 flex-col">
         {/* 사이드바 헤더 */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
             <button
               onClick={onBack}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="메인으로 돌아가기"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="flex-1">
               <h2 className="text-lg font-bold text-gray-900">CarFin AI</h2>
               <p className="text-sm text-gray-500">전문가팀 상담</p>
             </div>
+            <button
+              onClick={clearConversationHistory}
+              className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+              title="대화 기록 초기화"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* 전문가 상태 패널 */}
-        <div className="flex-1 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">참여 전문가</h3>
-
-          <div className="space-y-3">
-            {/* 컨시어지 매니저 */}
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="text-2xl">🎯</div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">컨시어지 매니저</p>
-                <p className="text-xs text-gray-600">상담 프로세스 관리</p>
-              </div>
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            </div>
-
-            {/* 니즈 분석 전문가 */}
-            <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
-              <div className="text-2xl">🔍</div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">니즈 분석 전문가</p>
-                <p className="text-xs text-gray-600">숨은 니즈 발굴</p>
-              </div>
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            </div>
-
-            {/* 데이터 분석 전문가 */}
-            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-100">
-              <div className="text-2xl">📊</div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">데이터 분석 전문가</p>
-                <p className="text-xs text-gray-600">매물 + TCO 분석</p>
-              </div>
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+        {/* CarFin 친근한 사이드바 */}
+        <div className="flex-1 p-4 space-y-4">
+          {/* 안심 메시지 */}
+          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+            <div className="text-center">
+              <div className="text-3xl mb-2">😊</div>
+              <h3 className="font-bold text-slate-800 mb-2">걱정 끝!</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                3명의 전문가가 {selectedPersona?.name || '고객님'}만을 위해
+                최고의 차량을 찾고 있어요
+              </p>
             </div>
           </div>
 
-          {/* 분석 상태 - 실시간 업데이트 */}
-          <div className="mt-6 p-3 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">분석 진행상황</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-gray-600">질문 분석</span>
-                <div className="flex items-center space-x-1">
-                  {analysisStatus.questionAnalysis === 'completed' && <span className="text-green-600 font-medium">완료</span>}
-                  {analysisStatus.questionAnalysis === 'in_progress' && (
-                    <>
-                      <div className="w-3 h-3 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-blue-600 font-medium">진행 중</span>
-                    </>
-                  )}
-                  {analysisStatus.questionAnalysis === 'pending' && <span className="text-gray-400 font-medium">대기 중</span>}
-                </div>
+          {/* 신뢰 지표 */}
+          <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm">
+            <div className="text-center space-y-3">
+              <div>
+                <div className="text-xl font-bold text-green-700">117,564+</div>
+                <div className="text-xs text-gray-600">실제 매물에서 검색</div>
               </div>
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-gray-600">니즈 파악</span>
-                <div className="flex items-center space-x-1">
-                  {analysisStatus.needsAnalysis === 'completed' && <span className="text-green-600 font-medium">완료</span>}
-                  {analysisStatus.needsAnalysis === 'in_progress' && (
-                    <>
-                      <div className="w-3 h-3 border border-orange-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-orange-600 font-medium">진행 중</span>
-                    </>
-                  )}
-                  {analysisStatus.needsAnalysis === 'pending' && <span className="text-gray-400 font-medium">대기 중</span>}
-                </div>
+              <div>
+                <div className="text-xl font-bold text-blue-700">100%</div>
+                <div className="text-xs text-gray-600">무료 상담</div>
               </div>
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-gray-600">매물 검색</span>
-                <div className="flex items-center space-x-1">
-                  {analysisStatus.dataSearch === 'completed' && (
-                    <>
-                      <span className="text-green-600 font-medium">완료</span>
-                      <span className="text-xs text-green-600">({dbStats.searchedVehicles}대 발견)</span>
-                    </>
-                  )}
-                  {analysisStatus.dataSearch === 'in_progress' && (
-                    <>
-                      <div className="w-3 h-3 border border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-green-600 font-medium">검색 중</span>
-                    </>
-                  )}
-                  {analysisStatus.dataSearch === 'pending' && <span className="text-gray-400 font-medium">대기 중</span>}
-                </div>
-              </div>
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-gray-600">전문가 협업</span>
-                <div className="flex items-center space-x-1">
-                  {analysisStatus.collaboration === 'completed' && <span className="text-green-600 font-medium">완료</span>}
-                  {analysisStatus.collaboration === 'in_progress' && (
-                    <>
-                      <div className="w-3 h-3 border border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-purple-600 font-medium">협업 중</span>
-                    </>
-                  )}
-                  {analysisStatus.collaboration === 'pending' && <span className="text-gray-400 font-medium">대기 중</span>}
-                </div>
+              <div>
+                <div className="text-xl font-bold text-purple-700">0%</div>
+                <div className="text-xs text-gray-600">딜러 영업</div>
               </div>
             </div>
           </div>
 
-          {/* A2A 실시간 협업 시각화 */}
-          {selectedPersona && (
-            <div className="mt-4">
-              <div className="p-3 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200 mb-3">
-                <div className="text-center">
-                  <div className="text-2xl mb-1">{selectedPersona.emoji}</div>
-                  <div className="text-sm font-medium text-purple-800">{selectedPersona.name}님 맞춤 A2A</div>
-                  <div className="text-xs text-purple-600">{selectedPersona.theme.description}</div>
+          {/* 📊 세션 통계 (조건부 표시) */}
+          {(currentSessionId || questionCount > 0) && (
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-100">
+              <div className="text-center space-y-2">
+                <div className="text-lg font-bold text-indigo-700">
+                  {questionCount}번째 질문
                 </div>
+                <div className="text-xs text-indigo-600">N번째 질문 환영 시스템</div>
+                {currentSessionId && (
+                  <div className="text-xs text-gray-500 font-mono bg-white/50 rounded px-2 py-1 mt-2">
+                    {currentSessionId.slice(-8)}
+                  </div>
+                )}
+                {conversationHistory.length > 0 && (
+                  <div className="text-xs text-indigo-600">
+                    저장된 대화: {conversationHistory.length}개
+                  </div>
+                )}
               </div>
-              <A2AVisualization
-                isActive={true}
-                currentPersona={selectedPersona.name}
-              />
             </div>
           )}
 
-          {/* 실시간 DB 연결 상태 */}
-          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-green-800">실시간 DB 연결</h4>
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-700 font-medium">연결됨</span>
-              </div>
+          {/* 기다리는 동안 팁 */}
+          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-100">
+            <div className="text-center">
+              <div className="text-2xl mb-2">💡</div>
+              <h4 className="font-medium text-orange-800 mb-2">잠깐! 알고 계셨나요?</h4>
+              <p className="text-sm text-orange-700 leading-relaxed">
+                중고차 구매시 가장 중요한 건 숨겨진 비용까지
+                꼼꼼히 따져보는 거예요. 저희가 다 계산해드릴게요!
+              </p>
             </div>
-            <div className="text-xs text-green-700">
-              <div className="flex justify-between">
-                <span>전체 매물:</span>
-                <span className="font-bold">{dbStats.totalVehicles?.toLocaleString()}대</span>
+          </div>
+
+          {/* 격려 메시지 */}
+          <div className="bg-white rounded-lg p-4 border border-green-100">
+            <div className="flex items-start space-x-3">
+              <div className="text-2xl">💝</div>
+              <div>
+                <h4 className="font-medium text-green-800 mb-1">CarFin 약속</h4>
+                <p className="text-sm text-green-700 leading-relaxed">
+                  딜러 영업 없이 100% 중립적으로
+                  당신 편에서 도와드려요
+                </p>
               </div>
-              {dbStats.searchedVehicles > 0 && (
-                <div className="flex justify-between mt-1">
-                  <span>검색 결과:</span>
-                  <span className="font-bold">{dbStats.searchedVehicles?.toLocaleString()}대</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -611,7 +794,77 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-6 space-y-6 bg-white"
         >
-          {messages.map((message) => {
+          {/* N번째 질문 환경 배너 */}
+          {welcomeSystemInitialized && (
+            <NthQuestionWelcomeBanner
+              question={initialQuestion}
+              detectedPersona={detectedPersonaForWelcome}
+              budget={budgetForWelcome}
+              className="mb-6"
+            />
+          )}
+
+          {/* CarFin 대기 UI - 친근하고 간단한 버전 */}
+          <CarFinWaitingUI
+            isVisible={showThinkingProcess}
+            currentMessage={initialQuestion}
+            isProcessing={isLoading}
+            selectedPersona={selectedPersona}
+          />
+
+          {/* GPT Thinking Toggle 버튼 - 개선된 스타일 */}
+          <div className="text-center mb-4">
+            <button
+              onClick={() => setShowThinkingProcess(!showThinkingProcess)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              {showThinkingProcess ? (
+                <>
+                  <span>🧠</span>
+                  <span>분석 과정 숨기기</span>
+                </>
+              ) : (
+                <>
+                  <span>🤖</span>
+                  <span>전문가들이 어떻게 도와주는지 보기</span>
+                </>
+              )}
+            </button>
+            <div className="text-xs text-gray-500 mt-2">
+              {showThinkingProcess
+                ? "분석 과정이 숨겨집니다"
+                : "3명의 전문가가 어떻게 도와주는지 확인해보세요! 😊"}
+            </div>
+          </div>
+
+          {/* 기존 레거시 토글 버튼 (조건부 표시 제거) */}
+          {false && messages.some(msg => isThinkingMessage(msg)) && (
+            <div className="text-center mb-4">
+              <button
+                onClick={() => setShowThinkingProcess(!showThinkingProcess)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors font-medium text-sm shadow-md"
+              >
+                {showThinkingProcess ? (
+                  <>
+                    <span>🔼</span>
+                    <span>분석 과정 접기</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔽</span>
+                    <span>전문가들이 어떻게 도와주는지 보기</span>
+                  </>
+                )}
+              </button>
+              <div className="text-xs text-gray-500 mt-1">
+                {showThinkingProcess
+                  ? "버튼을 눌러 상세 분석 과정을 숨김니다"
+                  : "에이전트들이 어떻게 협업하는지 궁금하다면 클릭!"}
+              </div>
+            </div>
+          )}
+
+          {displayMessages.map((message) => {
             const agentInfo = getAgentInfo(message.agent);
             const isUser = message.agent === 'user';
 
@@ -661,17 +914,17 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
                       {/* 차량 추천 카드 렌더링 */}
                       {message.messageType === 'vehicle_recommendations' && message.metadata?.vehicles ? (
-                        <VehicleRecommendationsDisplay
-                          message={message}
-                          onVehiclesUpdate={setLastVehicleRecommendations}
-                        />
-                      ) : (
-                        <div className="text-sm leading-relaxed">
-                          <span>{message.content}</span>
-                          {message.isStreaming && (
-                            <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse">|</span>
-                          )}
+                        <div data-vehicle-recommendations>
+                          <VehicleRecommendationsDisplay
+                            message={message}
+                            onVehiclesUpdate={setLastVehicleRecommendations}
+                          />
                         </div>
+                      ) : (
+                        <AgentMessageWithToggle
+                          message={message}
+                          isStreaming={message.isStreaming}
+                        />
                       )}
                       {/* 메타데이터 표시 */}
                       {message.metadata?.targetAgent && (
@@ -699,6 +952,35 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
             );
           })}
 
+          {/* 분석 완료 후 차량 추천 요약 */}
+          {analysisComplete && lastVehicleRecommendations.length > 0 && (
+            <VehicleRecommendationSummary
+              analysisComplete={true}
+              vehicleCount={lastVehicleRecommendations.length}
+              expertCount={3}
+              analysisTime={2.5}
+              onViewRecommendations={() => {
+                // 차량 추천 카드로 스크롤
+                const vehicleCard = document.querySelector('[data-vehicle-recommendations]');
+                if (vehicleCard) {
+                  vehicleCard.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              onViewAnalysisProcess={() => {
+                setShowDetailedAnalysis(!showDetailedAnalysis);
+              }}
+            />
+          )}
+
+          {/* 분석 진행 중 상태 표시 */}
+          {!analysisComplete && !isLoading && messages.some(msg => ['needs_analyst', 'data_analyst', 'concierge'].includes(msg.agent)) && (
+            <VehicleRecommendationSummary
+              analysisComplete={false}
+              onViewRecommendations={() => {}}
+              onViewAnalysisProcess={() => {}}
+            />
+          )}
+
           {isLoading && (
             <div className="flex justify-start">
               <div className="flex space-x-3">
@@ -713,10 +995,10 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
                         <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
-                      <span className="text-sm text-gray-600 font-medium">전문가팀이 분석 중입니다...</span>
+                      <span className="text-sm text-gray-600 font-medium">{loadingMessages.main}</span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      실시간 데이터를 기반으로 최적의 답변을 준비하고 있어요 😊
+                      {loadingMessages.sub}
                     </div>
                   </div>
                 </div>
@@ -784,10 +1066,10 @@ function VehicleRecommendationsDisplay({
         )}
       </div>
 
-      {/* 세로형 순위 레이아웃 */}
-      <div className="space-y-4">
+      {/* 강력한 수평 레이아웃 - 데스크톱에서 완전히 가로 배치 */}
+      <div className="flex flex-col lg:flex-row lg:space-x-4 lg:space-y-0 space-y-4 w-full">
         {vehicles.map((vehicle: any, index: number) => (
-          <div key={`vehicle-${vehicle.rank || index}`} className="flex-1">
+          <div key={`vehicle-${vehicle.rank || index}`} className="flex-1 lg:max-w-none">
             <HorizontalVehicleCard
               vehicle={vehicle}
               personaName={message.metadata?.persona}
@@ -807,6 +1089,72 @@ function VehicleRecommendationsDisplay({
           "{message.metadata?.persona || '고객'}님"의 라이프스타일에 맞춘 1순위부터 3순위까지의 차량 추천입니다
         </p>
       </div>
+    </div>
+  );
+}
+
+// AI 에이전트 메시지를 축약해서 표시하는 컴포넌트
+function AgentMessageWithToggle({
+  message,
+  isStreaming
+}: {
+  message: Message;
+  isStreaming?: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // AI 전문가 메시지만 축약 처리
+  const isExpertMessage = message.agent && ['needs_analyst', 'data_analyst', 'concierge'].includes(message.agent);
+
+  if (!isExpertMessage) {
+    // AI 전문가가 아닌 경우 기존 방식으로 표시
+    return (
+      <div className="text-sm leading-relaxed">
+        <span>{message.content}</span>
+        {isStreaming && (
+          <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse">|</span>
+        )}
+      </div>
+    );
+  }
+
+  // 메시지를 첫 문장(핵심)과 나머지(상세)로 분리
+  const content = message.content || '';
+  const sentences = content.split(/[.!?]\s+/).filter(s => s.trim());
+  const summary = sentences[0] + (sentences[0] && !sentences[0].match(/[.!?]$/) ? '.' : '');
+  const details = sentences.slice(1).join('. ') + (sentences.length > 1 ? '.' : '');
+
+  const hasDetails = details.trim().length > 0;
+
+  return (
+    <div className="text-sm leading-relaxed">
+      {/* 핵심 요약 */}
+      <div className="mb-2">
+        <span>{summary}</span>
+        {isStreaming && (
+          <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse">|</span>
+        )}
+      </div>
+
+      {/* 토글 버튼 (상세 내용이 있을 때만) */}
+      {hasDetails && !isStreaming && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-blue-600 hover:text-blue-800 transition-colors mb-2 flex items-center space-x-1"
+        >
+          <span>{isExpanded ? '📖 상세 내용 숨기기' : '📋 상세 분석 보기'}</span>
+          <span className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </button>
+      )}
+
+      {/* 상세 내용 */}
+      {hasDetails && isExpanded && (
+        <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-200">
+          <span>{details}</span>
+        </div>
+      )}
     </div>
   );
 }

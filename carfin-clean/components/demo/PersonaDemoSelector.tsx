@@ -28,7 +28,7 @@ export default function PersonaDemoSelector({ onPersonaSelect }: PersonaDemoSele
           🎭 다양한 고객 페르소나별 A2A 시연
         </h2>
         <p className="text-slate-600">
-          5가지 서로 다른 고객 유형별로 맞춤형 A2A 협업을 경험해보세요
+          6가지 서로 다른 고객 유형별로 맞춤형 A2A 협업을 경험해보세요
         </p>
       </div>
 
@@ -169,12 +169,13 @@ export default function PersonaDemoSelector({ onPersonaSelect }: PersonaDemoSele
       {/* 하단 안내 */}
       <div className="text-center text-sm text-slate-600 bg-slate-50 p-4 rounded-lg">
         <div className="font-medium mb-2">🎯 페르소나별 맞춤 A2A 협업의 차이점</div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
           <div>😨 <strong>첫차 불안</strong><br />안전성 중심 협업</div>
           <div>👩‍💼 <strong>워킹맘</strong><br />가족 우선 협업</div>
           <div>📱 <strong>MZ감성</strong><br />스타일 중심 협업</div>
           <div>🏕️ <strong>캠핑족</strong><br />실용성 중심 협업</div>
           <div>👨‍👩‍👧‍👦‍👶 <strong>대가족</strong><br />효율성 중심 협업</div>
+          <div>👔 <strong>CEO</strong><br />브랜드/골프 중심 협업</div>
         </div>
       </div>
     </div>
