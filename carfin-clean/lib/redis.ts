@@ -5,7 +5,6 @@ class RedisManager {
   private static instance: RedisManager;
   private client: RedisClientType | null = null;
   private isConnecting = false;
-
   private constructor() {}
 
   static getInstance(): RedisManager {
@@ -16,14 +15,19 @@ class RedisManager {
   }
 
   async getClient(): Promise<RedisClientType> {
+    // 🔥 실제 Valkey 연결 강제 - Mock 캐시 절대 금지!
+
     if (this.client && this.client.isReady) {
       return this.client;
     }
 
     if (this.isConnecting) {
-      // 연결 중이면 최대 5초 대기
+      // 연결 중이면 최대 1초만 대기 (개발 환경에서는 빠른 처리)
+      const maxWaitMs = process.env.NODE_ENV === 'development' ? 500 : 2000;
       let attempts = 0;
-      while (this.isConnecting && attempts < 50) {
+      const maxAttempts = maxWaitMs / 100;
+
+      while (this.isConnecting && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
       }
@@ -40,7 +44,8 @@ class RedisManager {
     this.isConnecting = true;
 
     try {
-      // 환경변수에서 Redis 설정 읽기
+      // 🚀 환경별 Redis 설정 최적화
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const redisUrl = process.env.REDIS_URL;
       const redisHost = process.env.REDIS_HOST;
       const redisPort = process.env.REDIS_PORT || '6379';
@@ -52,12 +57,14 @@ class RedisManager {
         // Redis URL이 있으면 URL 사용
         clientConfig = { url: redisUrl };
       } else if (redisHost) {
-        // 개별 설정 사용
+        // 🔥 AWS Valkey 실제 연결을 위한 충분한 타임아웃
+        const timeoutMs = isDevelopment ? 10000 : 15000; // 개발: 10초, 프로덕션: 15초
+
         clientConfig = {
           socket: {
             host: redisHost,
             port: parseInt(redisPort),
-            connectTimeout: 10000,
+            connectTimeout: timeoutMs,
             lazyConnect: true,
           }
         };
@@ -65,24 +72,21 @@ class RedisManager {
         if (redisPassword) {
           clientConfig.password = redisPassword;
         }
+
+        console.log(`🔧 ${isDevelopment ? 'DEV' : 'PROD'} 모드 - Valkey 연결 시도 (${timeoutMs}ms timeout)`);
       } else {
-        // 로컬 개발용 기본 설정
-        console.log('⚠️ Redis 환경변수가 없습니다. 로컬 Redis 사용 (localhost:6379)');
-        clientConfig = {
-          socket: {
-            host: 'localhost',
-            port: 6379,
-            connectTimeout: 5000,
-            lazyConnect: true,
-          }
-        };
+        // 로컬 개발용 기본 설정 (사용 안 함 - AWS Valkey만 사용)
+        console.log('🚨 AWS Valkey Host가 설정되지 않았습니다!');
+        throw new Error('REDIS_HOST 환경변수가 필요합니다 - AWS Valkey만 사용!');
       }
 
       this.client = createClient(clientConfig);
 
-      // 에러 핸들링
+      // 🔥 Valkey 연결 에러 핸들링 - Mock 전환 금지, 계속 재시도!
       this.client.on('error', (err) => {
-        console.error('🚨 Redis 연결 에러:', err);
+        console.error(`❌ AWS Valkey 연결 에러 - 재시도 필요: ${err.message}`);
+        console.log(`🔄 Valkey 연결 재시도 중... (Host: ${process.env.REDIS_HOST})`);
+        // Mock 전환하지 않고 계속 실제 연결 시도
         this.client = null;
         this.isConnecting = false;
       });
@@ -107,9 +111,14 @@ class RedisManager {
       return this.client;
 
     } catch (error) {
-      console.error('🚨 Redis 연결 실패:', error);
+      // 🔥 Valkey 연결 실패 - Mock 전환 절대 금지, 실제 연결만 허용!
       this.client = null;
       this.isConnecting = false;
+
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      console.error(`❌ ${isDevelopment ? 'DEV' : 'PROD'} 환경에서 AWS Valkey 연결 실패`);
+      console.log(`🔄 Valkey Host: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
+      console.log(`🚨 Mock 캐시 사용 금지 - 실제 Valkey 연결 필수!`);
       throw error;
     }
   }
@@ -125,14 +134,15 @@ class RedisManager {
     }
   }
 
-  // Redis가 사용 가능한지 확인
+  // 🔥 AWS Valkey 연결 상태 확인 - 실제 연결만!
   async isAvailable(): Promise<boolean> {
     try {
       const client = await this.getClient();
       await client.ping();
+      console.log('✅ AWS Valkey 연결 성공!');
       return true;
     } catch (error) {
-      console.log('⚠️ Redis 사용 불가, 로컬 캐시로 폴백');
+      console.error(`❌ AWS Valkey 연결 확인 실패: ${error.message}`);
       return false;
     }
   }
@@ -153,9 +163,11 @@ export const redis = {
       };
 
       await client.setEx(`search:${searchKey}`, 600, JSON.stringify(cacheData));
-      console.log(`🗄️ 차량 검색 캐시 저장: ${vehicles.length}대 (키: ${searchKey})`);
+      console.log(`🗄️ 차량 검색 캐시 저장: ${vehicles.length}대`);
     } catch (error) {
-      console.log('⚠️ 차량 검색 캐시 저장 실패, 계속 진행:', error.message);
+      console.error(`❌ AWS Valkey 캐시 저장 실패: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 추천 프로세스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 추천 프로세스를 방해하지 않음
     }
   },
 
@@ -167,12 +179,14 @@ export const redis = {
       const cached = await client.get(`search:${searchKey}`);
       if (cached) {
         const data = JSON.parse(cached);
-        console.log(`⚡ 차량 검색 캐시 히트: ${data.count}대 (키: ${searchKey})`);
+        console.log(`⚡ 차량 검색 캐시 히트: ${data.count}대`);
         return data.vehicles;
       }
       return null;
     } catch (error) {
-      console.log('⚠️ 차량 검색 캐시 조회 실패, DB에서 조회:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
       return null;
     }
   },
@@ -186,7 +200,9 @@ export const redis = {
       await client.setEx(`a2a:${sessionId}`, 1800, JSON.stringify(sessionData));
       console.log(`🤖 A2A 세션 저장: ${sessionId}`);
     } catch (error) {
-      console.log('⚠️ A2A 세션 저장 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
     }
   },
 
@@ -202,7 +218,9 @@ export const redis = {
       }
       return null;
     } catch (error) {
-      console.log('⚠️ A2A 세션 조회 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
       return null;
     }
   },
@@ -222,7 +240,9 @@ export const redis = {
       await client.setEx(`chat:${userId}`, 86400, JSON.stringify(conversationData));
       console.log(`💬 대화 저장: ${userId} (${messages.length}개 메시지)`);
     } catch (error) {
-      console.log('⚠️ 대화 저장 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
     }
   },
 
@@ -239,7 +259,9 @@ export const redis = {
       }
       return null;
     } catch (error) {
-      console.log('⚠️ 대화 조회 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
       return null;
     }
   },
@@ -252,7 +274,9 @@ export const redis = {
       await client.del(`chat:${userId}`);
       console.log(`🗑️ 대화 기록 삭제: ${userId}`);
     } catch (error) {
-      console.log('⚠️ 대화 삭제 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
     }
   },
 
@@ -265,7 +289,9 @@ export const redis = {
       await client.setEx(`pref:${userId}`, 604800, JSON.stringify(preferences));
       console.log(`👤 사용자 선호도 저장: ${userId}`);
     } catch (error) {
-      console.log('⚠️ 사용자 선호도 저장 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
     }
   },
 
@@ -281,7 +307,9 @@ export const redis = {
       }
       return null;
     } catch (error) {
-      console.log('⚠️ 사용자 선호도 조회 실패:', error.message);
+      console.error(`❌ AWS Valkey 에러: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      // 🔥 캐싱 에러는 서비스를 방해하지 않음 - 추천 프로세스 계속 진행
       return null;
     }
   },

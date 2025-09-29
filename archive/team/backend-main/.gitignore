@@ -1,0 +1,18 @@
+
+# Environments
+.env
+!.env.example
+
+# Node modules
+frontend/node_modules
+
+# Python
+**/__pycache__/
+backend/.venv
+backend/venv
+
+# Docker
+redis_data
+
+# 환경변수 
+.env

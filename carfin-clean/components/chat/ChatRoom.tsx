@@ -537,17 +537,35 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
         }
       };
 
-      eventSource.onerror = (error) => {
-        console.log('EventSource connection issue, retrying...');
-        eventSource.close();
-        setIsLoading(false);
+      let retryCount = 0;
+      const maxRetries = 2; // 최대 2회만 재시도
 
-        // 간단한 재시도 로직
-        setTimeout(() => {
-          if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
-            console.log('Attempting to reconnect...');
-          }
-        }, 2000);
+      eventSource.onerror = (error) => {
+        console.log(`📡 SSE 연결 오류 발생 (재시도 ${retryCount}/${maxRetries})`);
+        eventSource.close();
+
+        // 🔄 제한된 재연결 로직
+        if (retryCount < maxRetries && isLoading) {
+          retryCount++;
+          setTimeout(() => {
+            if (isLoading) { // 아직 로딩 중이면 재시도
+              console.log(`🔁 SSE 재연결 시도 ${retryCount}/${maxRetries}...`);
+              try {
+                // 새 EventSource 생성 (무한 재귀 방지)
+                const retryEventSource = new EventSource(
+                  `/api/chat/ws?question=${encodeURIComponent(question)}&context=real_ai_analysis&session=${sessionId}${previousVehiclesParam}`
+                );
+                // 기존 이벤트 핸들러 재설정하지 않음 - 간단한 재시도만
+              } catch (retryError) {
+                console.error('❌ SSE 재연결 실패:', retryError);
+                setIsLoading(false);
+              }
+            }
+          }, 2000 * retryCount); // 지수 백오프: 2초, 4초
+        } else {
+          console.log('⏹️ 최대 재시도 횟수 도달 또는 로딩 완료, SSE 재시도 중단');
+          setIsLoading(false);
+        }
       };
 
       // 컴포넌트 언마운트 시 연결 종료

@@ -1,5 +1,0 @@
-RDS 연결 성공!
-전체 테이블: 7개
-전체 레코드: 111,841개
-차량 관련 레코드: 111,841개
-테이블 목록: ['financial_products', 'loan_product', 'loan_rates', 'matches', 'recommendations', 'users', 'vehicles']

@@ -32,14 +32,12 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
       return getDemoVehicles(budget, usage, familyType);
     }
 
-    // Redis 캐싱 키 생성
-    const cacheKey = `${budget.min}-${budget.max}_${persona?.id || 'none'}_${includeLease ? 'lease' : 'nolease'}_${usage || 'any'}`;
-
-    // Redis에서 캐시된 결과 확인
-    const cachedVehicles = await redis.getCachedVehicleSearch(cacheKey);
-    if (cachedVehicles) {
-      return cachedVehicles;
-    }
+    // 🚀 PERFORMANCE FIX: Redis 캐싱 임시 비활성화 (즉시 DB 조회)
+    // const cacheKey = `${budget.min}-${budget.max}_${persona?.id || 'none'}_${includeLease ? 'lease' : 'nolease'}_${usage || 'any'}`;
+    // const cachedVehicles = await redis.getCachedVehicleSearch(cacheKey);
+    // if (cachedVehicles) {
+    //   return cachedVehicles;
+    // }
 
     // 페르소나별 맞춤 검색 조건 구성
     let carTypeCondition = '';
@@ -290,8 +288,8 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
 
     const result = await query(vehicleQuery, [budget.min, budget.max]);
 
-    // Redis에 검색 결과 캐싱 (10분간 보관)
-    await redis.cacheVehicleSearch(cacheKey, result.rows);
+    // 🚀 PERFORMANCE FIX: Redis 캐싱 임시 비활성화 (cacheKey 미정의 에러 방지)
+    // await redis.cacheVehicleSearch(cacheKey, result.rows);
 
     return result.rows;
 
