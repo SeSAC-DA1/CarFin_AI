@@ -9,6 +9,8 @@ import VehicleRecommendationSummary from '@/components/ui/VehicleRecommendationS
 import NthQuestionWelcomeBanner from '@/components/welcome/NthQuestionWelcomeBanner';
 import QuestionProgressBar from '@/components/welcome/QuestionProgressBar';
 import CarFinWaitingUI from '@/components/ui/CarFinWaitingUI';
+import CEODemoScenario from '@/components/demo/CEODemoScenario';
+import SatisfactionFeedback from '@/components/feedback/SatisfactionFeedback';
 import { DemoPersona } from '@/lib/collaboration/PersonaDefinitions';
 
 interface Message {
@@ -102,6 +104,10 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
   const [userId, setUserId] = useState<string>('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [sessionStats, setSessionStats] = useState<any>(null);
+
+  // 만족도 피드백 관련 상태
+  const [showSatisfactionFeedback, setShowSatisfactionFeedback] = useState(false);
+  const [feedbackData, setFeedbackData] = useState<any>(null);
 
   // 🔧 사용자 ID 초기화 및 이전 대화 복원
   useEffect(() => {
@@ -210,8 +216,40 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     const hasVehicleRecommendations = messages.some(msg => msg.messageType === 'vehicle_recommendations');
     if (hasVehicleRecommendations && !analysisComplete) {
       setAnalysisComplete(true);
+      // 차량 추천 완료 시 피드백 시스템 활성화 (3초 후)
+      setTimeout(() => {
+        setShowSatisfactionFeedback(true);
+      }, 3000);
     }
   }, [messages, analysisComplete]);
+
+  // 피드백 처리 함수
+  const handleFeedback = (feedback: any) => {
+    setFeedbackData(feedback);
+    console.log('💬 사용자 피드백 수집:', feedback);
+
+    // 만족한 경우 피드백 숨기기
+    if (feedback.satisfaction === 'satisfied') {
+      setTimeout(() => {
+        setShowSatisfactionFeedback(false);
+      }, 2000);
+    }
+  };
+
+  // 재추천 요청 처리 함수
+  const handleRecommendationRequest = async (refinement: string) => {
+    console.log('🔄 재추천 요청:', refinement);
+
+    // 피드백 기반 재질문 생성
+    const refinedQuestion = `이전 추천에서 "${refinement}" 이런 방향으로 개선해서 다시 추천해주세요. ${feedbackData?.suggestions ? `추가 요청사항: ${feedbackData.suggestions}` : ''}`;
+
+    // 피드백 시스템 숨기고 새로운 질문 시작
+    setShowSatisfactionFeedback(false);
+    setQuestionCount(prev => prev + 1);
+
+    // 자동으로 재추천 요청 전송
+    await handleSend(refinedQuestion);
+  };
 
   // N번째 질문 환영 메시지 함수
   const getWelcomeMessage = (count: number) => {
@@ -579,19 +617,22 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     }
   };
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSend = async (customQuestion?: string) => {
+    const messageContent = customQuestion || inputValue;
+    if (!messageContent.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       agent: 'user',
-      content: inputValue,
+      content: messageContent,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const question = inputValue;
-    setInputValue('');
+    const question = messageContent;
+    if (!customQuestion) {
+      setInputValue('');
+    }
     setQuestionCount(prev => prev + 1); // 질문 카운터 증가
 
     // 추가 질문도 WebSocket 스트리밍으로 처리
@@ -710,35 +751,68 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
         {/* CarFin 친근한 사이드바 */}
         <div className="flex-1 p-4 space-y-4">
-          {/* 안심 메시지 */}
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
-            <div className="text-center">
-              <div className="text-3xl mb-2">😊</div>
-              <h3 className="font-bold text-slate-800 mb-2">걱정 끝!</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                3명의 전문가가 {selectedPersona?.name || '고객님'}만을 위해
-                최고의 차량을 찾고 있어요
-              </p>
+          {/* CEO 전용 안심 메시지 또는 일반 안심 메시지 */}
+          {selectedPersona?.id === 'ceo_executive' ? (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+              <div className="text-center">
+                <div className="text-3xl mb-2">👔</div>
+                <h3 className="font-bold text-slate-800 mb-2">CEO 전용 서비스</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  골프, 비즈니스, 절세 효과까지<br />
+                  <strong>김정훈 대표님</strong>의 모든 니즈를 고려한<br />
+                  프리미엄 상담이 진행됩니다
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+              <div className="text-center">
+                <div className="text-3xl mb-2">😊</div>
+                <h3 className="font-bold text-slate-800 mb-2">걱정 끝!</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  3명의 전문가가 {selectedPersona?.name || '고객님'}만을 위해
+                  최고의 차량을 찾고 있어요
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* 신뢰 지표 */}
-          <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm">
-            <div className="text-center space-y-3">
-              <div>
-                <div className="text-xl font-bold text-green-700">117,564+</div>
-                <div className="text-xs text-gray-600">실제 매물에서 검색</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-blue-700">100%</div>
-                <div className="text-xs text-gray-600">무료 상담</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-purple-700">0%</div>
-                <div className="text-xs text-gray-600">딜러 영업</div>
+          {/* CEO 전용 신뢰 지표 또는 일반 신뢰 지표 */}
+          {selectedPersona?.id === 'ceo_executive' ? (
+            <div className="bg-white rounded-lg p-4 border border-amber-200 shadow-sm">
+              <div className="text-center space-y-3">
+                <div>
+                  <div className="text-xl font-bold text-amber-700">4,500~7,000만원</div>
+                  <div className="text-xs text-gray-600">CEO 맞춤 예산대</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-green-700">골프백 수납</div>
+                  <div className="text-xs text-gray-600">비즈니스 특화</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-purple-700">법인차 절세</div>
+                  <div className="text-xs text-gray-600">세금 혜택 가능</div>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm">
+              <div className="text-center space-y-3">
+                <div>
+                  <div className="text-xl font-bold text-green-700">117,564+</div>
+                  <div className="text-xs text-gray-600">실제 매물에서 검색</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-blue-700">100%</div>
+                  <div className="text-xs text-gray-600">무료 상담</div>
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-purple-700">0%</div>
+                  <div className="text-xs text-gray-600">딜러 영업</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 📊 세션 통계 (조건부 표시) */}
           {(currentSessionId || questionCount > 0) && (
@@ -822,6 +896,20 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
             />
           )}
 
+          {/* CEO 데모 시나리오 - 초기 화면 또는 CEO 페르소나 선택 시 */}
+          {(!welcomeSystemInitialized && selectedPersona?.id === 'ceo_executive') && (
+            <CEODemoScenario
+              isVisible={true}
+              onStartDemo={(demoQuestion) => {
+                setInputValue(demoQuestion);
+                // 자동으로 질문 전송
+                setTimeout(() => {
+                  handleSend(demoQuestion);
+                }, 1000);
+              }}
+            />
+          )}
+
           {/* CarFin 대기 UI - 친근하고 간단한 버전 */}
           <CarFinWaitingUI
             isVisible={showThinkingProcess}
@@ -855,8 +943,8 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
             </div>
           </div>
 
-          {/* 기존 레거시 토글 버튼 (조건부 표시 제거) */}
-          {false && messages.some(msg => isThinkingMessage(msg)) && (
+          {/* GPT Thinking UI - 에이전트 협업 과정 접기/펴기 */}
+          {messages.some(msg => isThinkingMessage(msg)) && (
             <div className="text-center mb-4">
               <button
                 onClick={() => setShowThinkingProcess(!showThinkingProcess)}
@@ -865,19 +953,19 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
                 {showThinkingProcess ? (
                   <>
                     <span>🔼</span>
-                    <span>분석 과정 접기</span>
+                    <span>추론 과정 접기 (핵심만 보기)</span>
                   </>
                 ) : (
                   <>
-                    <span>🔽</span>
-                    <span>전문가들이 어떻게 도와주는지 보기</span>
+                    <span>🧠</span>
+                    <span>에이전트 협업 과정 자세히 보기</span>
                   </>
                 )}
               </button>
               <div className="text-xs text-gray-500 mt-1">
                 {showThinkingProcess
-                  ? "버튼을 눌러 상세 분석 과정을 숨김니다"
-                  : "에이전트들이 어떻게 협업하는지 궁금하다면 클릭!"}
+                  ? "💡 결론만 보고 싶다면 접기를 누르세요"
+                  : "🤔 3명의 AI 전문가가 어떻게 생각하는지 궁금하다면?"}
               </div>
             </div>
           )}
@@ -939,10 +1027,19 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
                           />
                         </div>
                       ) : (
-                        <AgentMessageWithToggle
-                          message={message}
-                          isStreaming={message.isStreaming}
-                        />
+                        // 에이전트별 인사이트 카드 또는 일반 메시지 표시
+                        ['concierge', 'needs_analyst', 'data_analyst'].includes(message.agent) ? (
+                          <AgentInsightCard
+                            agent={message.agent}
+                            content={message.content}
+                            tcoSummary={message.metadata?.tcoSummary}
+                          />
+                        ) : (
+                          <AgentMessageWithToggle
+                            message={message}
+                            isStreaming={message.isStreaming}
+                          />
+                        )
                       )}
                       {/* 메타데이터 표시 */}
                       {message.metadata?.targetAgent && (
@@ -989,6 +1086,14 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
               }}
             />
           )}
+
+          {/* 만족도 피드백 시스템 - N번째 질문 환영 철학 구현 */}
+          <SatisfactionFeedback
+            recommendations={lastVehicleRecommendations}
+            onFeedback={handleFeedback}
+            onRecommendationRequest={handleRecommendationRequest}
+            isVisible={showSatisfactionFeedback && analysisComplete && lastVehicleRecommendations.length > 0}
+          />
 
           {/* 분석 진행 중 상태 표시 */}
           {!analysisComplete && !isLoading && messages.some(msg => ['needs_analyst', 'data_analyst', 'concierge'].includes(msg.agent)) && (

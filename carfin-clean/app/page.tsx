@@ -124,11 +124,27 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 mb-4 max-w-3xl mx-auto leading-relaxed">
             중고차 선택이 어렵나요? 😅 3명의 AI 전문가가 당신 대신 고민해드려요!
             <br />
             복잡한 비교는 그만, <strong>하고 싶은 말만 편하게 해주세요.</strong>
           </p>
+
+          {/* N번째 질문 환영 핵심 메시지 */}
+          <div className="bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 border-2 border-amber-300 rounded-2xl p-6 max-w-4xl mx-auto mb-8 shadow-lg">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-amber-800 mb-3">
+                🎯 업계 최초! "N번째 질문 환영" 철학
+              </h3>
+              <p className="text-lg text-amber-700 leading-relaxed">
+                <strong>"2번째 질문이네요! 더 정확해져요!"</strong> <br />
+                다른 곳에서는 짜증내는 추가 질문을, CarFin AI는 <strong>환영합니다</strong> ✨
+              </p>
+              <p className="text-sm text-amber-600 mt-2">
+                💡 질문할수록 더 정확한 추천 • CEO부터 신혼부부까지 맞춤 분석
+              </p>
+            </div>
+          </div>
 
           {/* 신뢰 지표 - 강화된 디자인 */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-12 max-w-4xl mx-auto">
@@ -268,11 +284,11 @@ export default function Home() {
           </h3>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {/* 컨시어지 매니저 */}
+            {/* 차량 상담 전문가 */}
             <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">🎯</div>
-                <h4 className="text-xl font-bold text-blue-800">컨시어지 매니저</h4>
+                <h4 className="text-xl font-bold text-blue-800">차량 상담 전문가</h4>
                 <p className="text-blue-600 text-sm">전체 상담 프로세스 체계적 관리</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
@@ -294,11 +310,11 @@ export default function Home() {
               </p>
             </div>
 
-            {/* 데이터 분석 전문가 */}
+            {/* 매물 추천 전문가 */}
             <div className="bg-green-50 rounded-xl p-6 border border-green-200">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">📊</div>
-                <h4 className="text-xl font-bold text-green-800">데이터 분석 전문가</h4>
+                <h4 className="text-xl font-bold text-green-800">매물 추천 전문가</h4>
                 <p className="text-green-600 text-sm">{dbStatus.totalVehicles.toLocaleString()}+ 매물 + TCO + 금융 분석 올인원</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">

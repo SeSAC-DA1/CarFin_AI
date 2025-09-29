@@ -15,29 +15,17 @@ class RedisManager {
   }
 
   async getClient(): Promise<RedisClientType> {
-    // 🔥 실제 Valkey 연결 강제 - Mock 캐시 절대 금지!
-
-    if (this.client && this.client.isReady) {
+    if (this.client && this.client.isOpen) {
       return this.client;
     }
 
     if (this.isConnecting) {
-      // 연결 중이면 최대 1초만 대기 (개발 환경에서는 빠른 처리)
-      const maxWaitMs = process.env.NODE_ENV === 'development' ? 500 : 2000;
-      let attempts = 0;
-      const maxAttempts = maxWaitMs / 100;
-
-      while (this.isConnecting && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-
-      if (this.client && this.client.isReady) {
-        return this.client;
-      }
+      // 연결 중이면 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return this.getClient();
     }
 
-    return this.connect();
+    return await this.connect();
   }
 
   private async connect(): Promise<RedisClientType> {

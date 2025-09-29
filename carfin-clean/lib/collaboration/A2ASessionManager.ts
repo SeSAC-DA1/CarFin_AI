@@ -40,10 +40,14 @@ export class A2ASessionManager {
       metadata: {}
     };
 
-    // Valkey에 세션 저장 (30분 TTL)
-    await redis.setA2ASession(sessionId, session);
+    // Valkey에 세션 저장 (30분 TTL) - 실패해도 계속 진행
+    try {
+      await redis.setA2ASession(sessionId, session);
+      console.log(`🤖 A2A 세션 생성 및 Valkey 저장: ${sessionId} (사용자: ${userId})`);
+    } catch (error) {
+      console.warn(`⚠️ Valkey 저장 실패하지만 세션은 생성됨: ${sessionId} (에러: ${error.message})`);
+    }
 
-    console.log(`🤖 A2A 세션 생성: ${sessionId} (사용자: ${userId})`);
     return session;
   }
 
@@ -51,10 +55,14 @@ export class A2ASessionManager {
    * 기존 세션 복원
    */
   async getSession(sessionId: string): Promise<A2ASession | null> {
-    const session = await redis.getA2ASession(sessionId);
-    if (session) {
-      console.log(`🔄 A2A 세션 복원: ${sessionId}`);
-      return session;
+    try {
+      const session = await redis.getA2ASession(sessionId);
+      if (session) {
+        console.log(`🔄 A2A 세션 복원: ${sessionId}`);
+        return session;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Valkey에서 세션 복원 실패, 인메모리로 계속 진행: ${sessionId} (에러: ${error.message})`);
     }
     return null;
   }
@@ -75,8 +83,13 @@ export class A2ASessionManager {
       lastActivity: new Date()
     };
 
-    await redis.setA2ASession(sessionId, updatedSession);
-    console.log(`📝 A2A 세션 업데이트: ${sessionId} (상태: ${updatedSession.collaborationState})`);
+    // Valkey 업데이트 시도 - 실패해도 계속 진행
+    try {
+      await redis.setA2ASession(sessionId, updatedSession);
+      console.log(`📝 A2A 세션 업데이트: ${sessionId} (상태: ${updatedSession.collaborationState})`);
+    } catch (error) {
+      console.warn(`⚠️ Valkey 업데이트 실패하지만 세션은 업데이트됨: ${sessionId} (에러: ${error.message})`);
+    }
 
     return updatedSession;
   }
@@ -178,8 +191,12 @@ export class A2ASessionManager {
     // 세션 분석 데이터 생성
     const analytics = this.generateSessionAnalytics(session, completionType);
 
-    // 분석 데이터 저장 (7일 보관)
-    await redis.cacheUserPreference(`analytics_${sessionId}`, analytics);
+    // 분석 데이터 저장 (7일 보관) - 실패해도 계속 진행
+    try {
+      await redis.cacheUserPreference(`analytics_${sessionId}`, analytics);
+    } catch (error) {
+      console.warn(`⚠️ Valkey 분석 데이터 저장 실패: ${sessionId} (에러: ${error.message})`);
+    }
 
     console.log(`✅ A2A 세션 완료: ${sessionId} (타입: ${completionType}, 질문수: ${session.questionCount})`);
 
