@@ -47,6 +47,15 @@ interface RerankingResult {
     bestValueVehicle: string;
     costRange: string;
   };
+  // 🔥 리뷰 인사이트 추가
+  reviewInsight?: {
+    insight: string;
+    sentimentScore: number;
+    brandTierAdjustment: string;
+    personaRelevance: string;
+    sourceReviewCount: number;
+    confidence: 'high' | 'medium' | 'low';
+  };
 }
 
 export class VehicleReranker {
@@ -145,23 +154,75 @@ export class VehicleReranker {
       }
     }
 
+    // 🔥 리뷰 인사이트 분석 수행
+    const reviewInsightResults = new Map<string, any>();
+    try {
+      const { brandTierReviewEngine } = await import('@/lib/review/BrandTierReviewEngine');
+      console.log(`💬 ${vehicles.length}대 차량의 리뷰 인사이트 생성 중...`);
+
+      for (const vehicle of vehicles) {
+        try {
+          const reviewInsight = await brandTierReviewEngine.generateVehicleReviewInsight(
+            vehicle.manufacturer,
+            vehicle.model,
+            vehicle.modelyear,
+            vehicle.cartype,
+            persona.id
+          );
+          const key = `${vehicle.manufacturer}_${vehicle.model}_${vehicle.modelyear}`;
+          reviewInsightResults.set(key, {
+            insight: reviewInsight.reviewInsight,
+            sentimentScore: reviewInsight.sentimentScore,
+            brandTierAdjustment: reviewInsight.brandTierAdjustment,
+            personaRelevance: reviewInsight.personaRelevance,
+            sourceReviewCount: reviewInsight.sourceReviewCount,
+            confidence: reviewInsight.confidence
+          });
+        } catch (error) {
+          console.warn(`⚠️ 리뷰 인사이트 생성 실패: ${vehicle.manufacturer} ${vehicle.model}`, error);
+        }
+      }
+
+      console.log(`✅ 리뷰 인사이트 생성 완료: ${reviewInsightResults.size}개`);
+    } catch (error) {
+      console.error('❌ 리뷰 인사이트 시스템 로드 실패:', error);
+    }
+
     const vehicleList = vehicles.map((v, idx) => {
       const key = `${v.manufacturer}_${v.model}_${v.modelyear}`;
       const optionAnalysis = optionAnalysisResults.get(key);
+      const reviewInsight = reviewInsightResults.get(key);
 
       const optionInfo = optionAnalysis
         ? ` [옵션가치: ${optionAnalysis.totalOptionValue}점, ${optionAnalysis.recommendation}]`
         : '';
 
-      return `${idx + 1}. ${v.manufacturer} ${v.model} ${v.modelyear}년 - ${v.price?.toLocaleString()}만원 (${v.distance?.toLocaleString()}km) [${v.fueltype}]${optionInfo}`;
+      const reviewInfo = reviewInsight
+        ? ` [리뷰: "${reviewInsight.insight}" (신뢰도: ${reviewInsight.confidence}, 평점: ${reviewInsight.sentimentScore.toFixed(1)})]`
+        : '';
+
+      return `${idx + 1}. ${v.manufacturer} ${v.model} ${v.modelyear}년 - ${v.price?.toLocaleString()}만원 (${v.distance?.toLocaleString()}km) [${v.fueltype}]${optionInfo}${reviewInfo}`;
     }).join('\n');
 
-    // 옵션분석 요약 생성
-    const optionSummary = optionAnalysisResults.size > 0
-      ? `\n🚗 차량 옵션 분석 요약:\n${Array.from(optionAnalysisResults.entries()).map(([key, analysis]) => {
-          const [manufacturer, model] = key.split('_');
-          return `- ${manufacturer} ${model}: 옵션가치 ${analysis.totalOptionValue}점 (${analysis.recommendation}), 하이라이트: ${analysis.optionHighlights.length}개`;
-        }).join('\n')}\n`
+    // 종합 분석 요약 생성
+    const analysisSubSummary = [];
+
+    if (optionAnalysisResults.size > 0) {
+      analysisSubSummary.push(`🚗 차량 옵션 분석:\n${Array.from(optionAnalysisResults.entries()).map(([key, analysis]) => {
+        const [manufacturer, model] = key.split('_');
+        return `- ${manufacturer} ${model}: 옵션가치 ${analysis.totalOptionValue}점 (${analysis.recommendation}), 하이라이트: ${analysis.optionHighlights.length}개`;
+      }).join('\n')}`);
+    }
+
+    if (reviewInsightResults.size > 0) {
+      analysisSubSummary.push(`💬 리뷰 인사이트 분석:\n${Array.from(reviewInsightResults.entries()).map(([key, review]) => {
+        const [manufacturer, model] = key.split('_');
+        return `- ${manufacturer} ${model}: "${review.insight}" (${review.sourceReviewCount}개 리뷰 기반, ${review.confidence} 신뢰도)`;
+      }).join('\n')}`);
+    }
+
+    const comprehensiveSummary = analysisSubSummary.length > 0
+      ? `\n${analysisSubSummary.join('\n\n')}\n`
       : '';
 
     const prompt = `당신은 CarFin AI의 전문 차량 평가사입니다. 다음 차량들을 "${persona.name}" 페르소나에 맞춰 개인화 점수를 매겨주세요.
@@ -174,7 +235,7 @@ export class VehicleReranker {
 - 주요 고민: ${persona.realConcerns.slice(0, 3).join(', ')}
 
 🚗 분석 대상 차량:
-${vehicleList}${optionSummary}
+${vehicleList}${comprehensiveSummary}
 
 🎯 사용자 요청: "${userContext}"
 
@@ -237,9 +298,10 @@ ${vehicleList}${optionSummary}
           throw new Error(`Invalid vehicle index: ${ranking.vehicleIndex}`);
         }
 
-        // 옵션 분석 결과 포함
+        // 옵션 분석 및 리뷰 인사이트 결과 포함
         const key = `${vehicle.manufacturer}_${vehicle.model}_${vehicle.modelyear}`;
         const optionAnalysis = optionAnalysisResults.get(key);
+        const reviewInsight = reviewInsightResults.get(key);
 
         return {
           vehicle,
@@ -257,6 +319,14 @@ ${vehicleList}${optionSummary}
             personaFitScore: optionAnalysis.personaFitScore,
             recommendation: optionAnalysis.recommendation,
             valueJustification: optionAnalysis.valueJustification
+          } : undefined,
+          reviewInsight: reviewInsight ? {
+            insight: reviewInsight.insight,
+            sentimentScore: reviewInsight.sentimentScore,
+            brandTierAdjustment: reviewInsight.brandTierAdjustment,
+            personaRelevance: reviewInsight.personaRelevance,
+            sourceReviewCount: reviewInsight.sourceReviewCount,
+            confidence: reviewInsight.confidence
           } : undefined
         };
       });

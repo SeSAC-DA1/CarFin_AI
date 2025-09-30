@@ -24,6 +24,15 @@ interface VehicleRecommendation {
   pros: string[];
   cons: string[];
   suitabilityScore: number;
+  // 🔥 리뷰 인사이트 추가
+  reviewInsight?: {
+    insight: string;
+    sentimentScore: number;
+    brandTierAdjustment: string;
+    personaRelevance: string;
+    sourceReviewCount: number;
+    confidence: 'high' | 'medium' | 'low';
+  };
   tcoCost?: number;
   tcoBreakdown?: {
     initialCost: number;
@@ -302,6 +311,44 @@ export default function CompactVehicleCard({ vehicle, personaName, rank }: Compa
                 </div>
               </div>
             </div>
+
+            {/* 🔥 사용자 리뷰 인사이트 */}
+            {vehicle.reviewInsight && (
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3 mb-3">
+                <div className="flex items-start space-x-2">
+                  <div className="text-lg">💬</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-purple-800">
+                        실제 사용자 리뷰 기반 인사이트
+                      </p>
+                      <div className="flex items-center space-x-1">
+                        <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                        <span className="text-xs text-purple-600 font-medium">
+                          {vehicle.reviewInsight.sentimentScore.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-purple-700 mb-2 font-medium">
+                      "{vehicle.reviewInsight.insight}"
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-purple-600">
+                      <span className="flex items-center space-x-1">
+                        <Shield className={`w-3 h-3 ${
+                          vehicle.reviewInsight.confidence === 'high' ? 'text-green-500' :
+                          vehicle.reviewInsight.confidence === 'medium' ? 'text-yellow-500' : 'text-gray-500'
+                        }`} />
+                        <span>
+                          {vehicle.reviewInsight.confidence === 'high' ? '높은 신뢰도' :
+                           vehicle.reviewInsight.confidence === 'medium' ? '보통 신뢰도' : '낮은 신뢰도'}
+                        </span>
+                      </span>
+                      <span>{vehicle.reviewInsight.sourceReviewCount.toLocaleString()}개 리뷰 기반</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 액션 버튼들 */}
             <div className="flex gap-2">

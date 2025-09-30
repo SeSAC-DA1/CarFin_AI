@@ -1,14 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 🚀 Vercel 배포 최적화
+  serverExternalPackages: ['pg', 'redis'],
   // 🔧 한글 UTF-8 인코딩 보장
-  serverExternalPackages: [],
-  // Request body 크기 제한 증가 (한글 문자 처리)
   env: {
     FORCE_UTF8: 'true',
   },
-  // 🚀 Vercel 배포 최적화
-  serverExternalPackages: ['pg', 'redis'],
   eslint: {
     ignoreDuringBuilds: true,
   },
