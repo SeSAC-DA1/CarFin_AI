@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft, Users, RotateCcw } from 'lucide-react';
 import A2AVisualization from '@/components/ui/A2AVisualization';
 import HorizontalVehicleCard from '@/components/ui/HorizontalVehicleCard';
+import CompactVehicleCard from '@/components/ui/CompactVehicleCard';
 import AgentInsightCard from '@/components/ui/AgentInsightCard';
 import VehicleRecommendationSummary from '@/components/ui/VehicleRecommendationSummary';
 import NthQuestionWelcomeBanner from '@/components/welcome/NthQuestionWelcomeBanner';
@@ -236,18 +237,52 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     }
   };
 
-  // 재추천 요청 처리 함수
+  // 재추천 요청 처리 함수 - 지능적 재랭킹
   const handleRecommendationRequest = async (refinement: string) => {
     console.log('🔄 재추천 요청:', refinement);
+    console.log('📊 이전 추천 데이터:', lastVehicleRecommendations.length, '대');
 
-    // 피드백 기반 재질문 생성
-    const refinedQuestion = `이전 추천에서 "${refinement}" 이런 방향으로 개선해서 다시 추천해주세요. ${feedbackData?.suggestions ? `추가 요청사항: ${feedbackData.suggestions}` : ''}`;
+    // 기존 추천 데이터 컨텍스트 생성
+    const previousContext = lastVehicleRecommendations.length > 0
+      ? `\n\n🔍 이전 추천 분석:\n` +
+        `- 추천받은 차량: ${lastVehicleRecommendations.length}대\n` +
+        `- 최고 점수: ${Math.max(...lastVehicleRecommendations.map(v => v.reranking_score || 0))}점\n` +
+        `- 주요 브랜드: ${[...new Set(lastVehicleRecommendations.slice(0,3).map(v => v.manufacturer))].join(', ')}\n` +
+        `- 가격대: ${Math.min(...lastVehicleRecommendations.map(v => v.price))}~${Math.max(...lastVehicleRecommendations.map(v => v.price))}만원`
+      : '';
 
-    // 피드백 시스템 숨기고 새로운 질문 시작
+    // 지능적 재질문 생성
+    const refinedQuestion = `${refinement}${previousContext}
+
+🎯 개선 요청: 위 피드백을 반영해서 완전히 새로운 관점으로 차량을 재분석하고 다시 추천해주세요.
+${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.suggestions}` : ''}
+
+🔄 재랭킹 모드: 이전 추천과는 다른 새로운 차량들을 우선적으로 고려해주세요.`;
+
+    // 재랭킹 상태 초기화
     setShowSatisfactionFeedback(false);
     setQuestionCount(prev => prev + 1);
+    setAnalysisComplete(false);
+    setLastVehicleRecommendations([]); // 이전 추천 초기화
+
+    // 재랭킹 시스템 메시지 추가
+    const reRankingMessage: Message = {
+      id: Date.now().toString(),
+      agent: 'system',
+      content: `🔄 재랭킹 시스템 활성화: ${refinement}`,
+      timestamp: new Date(),
+      messageType: 'system_info',
+      metadata: {
+        reranking: true,
+        previousCount: lastVehicleRecommendations.length,
+        refinementType: refinement
+      }
+    };
+
+    setMessages(prev => [...prev, reRankingMessage]);
 
     // 자동으로 재추천 요청 전송
+    console.log('🚀 지능적 재랭킹 요청 전송');
     await handleSend(refinedQuestion);
   };
 
@@ -722,9 +757,9 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
       );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* 좌측 사이드바 - 데스크톱에서만 표시, 너비 축소 */}
-      <div className="hidden lg:flex w-64 xl:w-72 bg-white border-r border-gray-200 flex-col">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* 좌측 사이드바 - 실시간 동적 정보 표시 */}
+      <div className="hidden lg:flex w-80 xl:w-96 bg-white border-r border-gray-200 flex-col overflow-hidden">
         {/* 사이드바 헤더 */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
@@ -749,8 +784,8 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
           </div>
         </div>
 
-        {/* CarFin 친근한 사이드바 */}
-        <div className="flex-1 p-4 space-y-4">
+        {/* CarFin 실시간 동적 사이드바 */}
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           {/* CEO 전용 안심 메시지 또는 일반 안심 메시지 */}
           {selectedPersona?.id === 'ceo_executive' ? (
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
@@ -777,37 +812,67 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
             </div>
           )}
 
+          {/* 🚀 실시간 분석 상태 대시보드 */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+            <h3 className="font-bold text-blue-800 mb-3 text-sm">📊 실시간 분석 현황</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-blue-600">데이터 조회</span>
+                <div className="flex items-center space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${analysisStatus.dataSearch === 'completed' ? 'bg-green-400' : analysisStatus.dataSearch === 'in_progress' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
+                  <span className="text-xs font-mono text-gray-600">{dbStats.totalVehicles.toLocaleString()}대</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-blue-600">AI 협업</span>
+                <div className="flex items-center space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${analysisStatus.collaboration === 'completed' ? 'bg-green-400' : analysisStatus.collaboration === 'in_progress' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
+                  <span className="text-xs text-gray-600">{currentSessionId ? 'A2A' : '대기'}</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-blue-600">랭킹 분석</span>
+                <div className="flex items-center space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${lastVehicleRecommendations.length > 0 ? 'bg-green-400' : isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
+                  <span className="text-xs font-mono text-gray-600">{lastVehicleRecommendations.length > 0 ? `${lastVehicleRecommendations.length}대` : '대기'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* CEO 전용 신뢰 지표 또는 일반 신뢰 지표 */}
           {selectedPersona?.id === 'ceo_executive' ? (
             <div className="bg-white rounded-lg p-4 border border-amber-200 shadow-sm">
+              <h3 className="font-bold text-amber-800 mb-3 text-sm">💎 CEO 맞춤 서비스</h3>
               <div className="text-center space-y-3">
                 <div>
-                  <div className="text-xl font-bold text-amber-700">4,500~7,000만원</div>
-                  <div className="text-xs text-gray-600">CEO 맞춤 예산대</div>
+                  <div className="text-lg font-bold text-amber-700">4,500~7,000만원</div>
+                  <div className="text-xs text-gray-600">프리미엄 예산대</div>
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-green-700">골프백 수납</div>
+                  <div className="text-lg font-bold text-green-700">골프백 수납</div>
                   <div className="text-xs text-gray-600">비즈니스 특화</div>
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-purple-700">법인차 절세</div>
+                  <div className="text-lg font-bold text-purple-700">법인차 절세</div>
                   <div className="text-xs text-gray-600">세금 혜택 가능</div>
                 </div>
               </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-3 text-sm">🎯 CarFin 신뢰지표</h3>
               <div className="text-center space-y-3">
                 <div>
-                  <div className="text-xl font-bold text-green-700">117,564+</div>
+                  <div className="text-lg font-bold text-green-700">{dbStats.totalVehicles > 0 ? dbStats.totalVehicles.toLocaleString() : '117,564'}+</div>
                   <div className="text-xs text-gray-600">실제 매물에서 검색</div>
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-blue-700">100%</div>
+                  <div className="text-lg font-bold text-blue-700">100%</div>
                   <div className="text-xs text-gray-600">무료 상담</div>
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-purple-700">0%</div>
+                  <div className="text-lg font-bold text-purple-700">0%</div>
                   <div className="text-xs text-gray-600">딜러 영업</div>
                 </div>
               </div>
@@ -832,6 +897,80 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
                     저장된 대화: {conversationHistory.length}개
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* 🏆 실시간 Top 차량 미니 대시보드 */}
+          {lastVehicleRecommendations.length > 0 && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-green-800 text-sm flex items-center space-x-1">
+                  <span>🏆</span>
+                  <span>TOP 추천</span>
+                </h3>
+                <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                  {lastVehicleRecommendations.length}대 분석
+                </div>
+              </div>
+              <div className="space-y-3">
+                {lastVehicleRecommendations.slice(0, 3).map((vehicle, index) => {
+                  const rankConfig = {
+                    1: { icon: '🥇', color: 'from-yellow-100 to-orange-100', border: 'border-yellow-300', text: 'text-yellow-800' },
+                    2: { icon: '🥈', color: 'from-gray-100 to-gray-200', border: 'border-gray-300', text: 'text-gray-800' },
+                    3: { icon: '🥉', color: 'from-orange-100 to-red-100', border: 'border-orange-300', text: 'text-orange-800' }
+                  }[index + 1] || { icon: '⭐', color: 'from-blue-100 to-blue-200', border: 'border-blue-300', text: 'text-blue-800' };
+
+                  return (
+                    <div key={vehicle.vehicleid} className={`bg-gradient-to-r ${rankConfig.color} rounded-lg p-3 border ${rankConfig.border} hover:shadow-md transition-shadow cursor-pointer`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">{rankConfig.icon}</span>
+                          <div>
+                            <div className={`text-xs font-bold ${rankConfig.text}`}>
+                              {index + 1}순위 추천
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-sm font-bold ${rankConfig.text}`}>
+                            {vehicle.reranking_score || 90}점
+                          </div>
+                          <div className="text-xs text-gray-600">적합도</div>
+                        </div>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900 mb-1 leading-tight">
+                        {vehicle.manufacturer} {vehicle.model}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>{vehicle.modelyear}년식</span>
+                        <span className="font-medium text-blue-700">{vehicle.price?.toLocaleString()}만원</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                        <span>{vehicle.distance?.toLocaleString()}km</span>
+                        <span>{vehicle.location}</span>
+                      </div>
+                      {vehicle.recommendationReason && (
+                        <div className="mt-2 text-xs text-gray-700 bg-white/60 rounded px-2 py-1 leading-relaxed">
+                          {vehicle.recommendationReason.slice(0, 45)}...
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 추가 정보 및 액션 */}
+              <div className="mt-3 pt-3 border-t border-green-200">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-1 text-green-700">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>실시간 업데이트</span>
+                  </div>
+                  <div className="text-green-600 font-medium">
+                    총 {lastVehicleRecommendations.length}대 랭킹
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -884,7 +1023,7 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-6 space-y-6 bg-white"
+          className="flex-1 overflow-y-auto p-6 space-y-6 bg-white pb-24"
         >
           {/* N번째 질문 환경 배너 */}
           {welcomeSystemInitialized && (
@@ -1189,11 +1328,11 @@ function VehicleRecommendationsDisplay({
         )}
       </div>
 
-      {/* 강력한 수평 레이아웃 - 데스크톱에서 완전히 가로 배치 */}
-      <div className="flex flex-col lg:flex-row lg:space-x-4 lg:space-y-0 space-y-4 w-full">
+      {/* 사용자 비교 최적화 세로 레이아웃 */}
+      <div className="space-y-4 max-w-4xl mx-auto">
         {vehicles.map((vehicle: any, index: number) => (
-          <div key={`vehicle-${vehicle.rank || index}`} className="flex-1 lg:max-w-none">
-            <HorizontalVehicleCard
+          <div key={`vehicle-${vehicle.rank || index}`} className="w-full">
+            <CompactVehicleCard
               vehicle={vehicle}
               personaName={message.metadata?.persona}
               rank={vehicle.rank}
@@ -1203,14 +1342,36 @@ function VehicleRecommendationsDisplay({
       </div>
 
       {/* 순위 비교 안내 */}
-      <div className="text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg">
-        <div className="flex items-center justify-center space-x-2 mb-2">
-          <span className="text-lg">📋</span>
-          <span className="font-medium">순위별 추천 차량</span>
+      <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+        <div className="text-center">
+          <div className="flex items-center justify-center space-x-2 mb-3">
+            <span className="text-2xl">🏆</span>
+            <span className="text-lg font-bold text-blue-800">차량 순위별 비교</span>
+          </div>
+          <p className="text-sm text-blue-700 mb-4">
+            "{message.metadata?.persona || '고객'}님"의 니즈와 라이프스타일을 분석하여 맞춤 순위를 제공합니다
+          </p>
+          <div className="grid grid-cols-3 gap-4 text-xs">
+            <div className="text-center p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-lg mb-1">🥇</div>
+              <div className="font-bold text-yellow-800">1순위</div>
+              <div className="text-yellow-700">최적 매치</div>
+            </div>
+            <div className="text-center p-2 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="text-lg mb-1">🥈</div>
+              <div className="font-bold text-gray-800">2순위</div>
+              <div className="text-gray-700">대안 추천</div>
+            </div>
+            <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="text-lg mb-1">🥉</div>
+              <div className="font-bold text-orange-800">3순위</div>
+              <div className="text-orange-700">고려 옵션</div>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-blue-600">
+            💡 각 차량의 장단점과 통계를 비교하여 최선의 선택을 하세요
+          </div>
         </div>
-        <p className="text-xs">
-          "{message.metadata?.persona || '고객'}님"의 라이프스타일에 맞춘 1순위부터 3순위까지의 차량 추천입니다
-        </p>
       </div>
     </div>
   );
