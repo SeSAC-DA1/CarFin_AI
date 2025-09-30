@@ -7,9 +7,15 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: {
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false,
-  },
+    require: true,
+  } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000, // Vercel을 위한 더 긴 타임아웃
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
 });
 
 export async function query(text: string, params?: any[]) {
