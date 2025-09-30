@@ -47,7 +47,7 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
     // 리스/매매 구분 필터링 (기본: 자차 구매만 표시)
     let sellTypeCondition = '';
     if (!includeLease) {
-      sellTypeCondition = "AND (selltype = '일반' OR selltype IS NULL OR selltype != '리스')";
+      sellTypeCondition = "AND (sell_type = '일반' OR sell_type IS NULL OR sell_type != '리스')";
       console.log('🚗 자차 구매 매물만 표시 (리스 제외)');
     } else {
       console.log('🚗 리스 포함 전체 매물 표시');
@@ -60,9 +60,9 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
       switch (persona.id) {
         case 'first_car_anxiety': // 김지수 - 첫차 불안
           carTypeCondition = `
-            AND cartype IN ('준중형', '소형', '중형')
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'
+            AND car_type IN ('준중형', '소형', '중형')
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'
             AND manufacturer IN ('현대', '기아', '제네시스', '쌍용')`;
 
           // 안전성(40%) + 신뢰성(30%) + 가격(30%) 가중치
@@ -73,23 +73,23 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
               WHEN manufacturer = '쌍용' THEN 3
               ELSE 10
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             (distance / 10000) ASC,
             price ASC`;
           break;
 
         case 'working_mom': // 이소영 - 워킹맘
           carTypeCondition = `
-            AND (cartype LIKE '%SUV%' OR cartype IN ('중형', '준중형'))
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'`;
+            AND (car_type LIKE '%SUV%' OR car_type IN ('중형', '준중형'))
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'`;
 
           // 안전성(40%) + 공간(30%) + 편의성(30%) 가중치
           orderCondition = `
             CASE
-              WHEN cartype LIKE '%SUV%' THEN 1
-              WHEN cartype = '중형' THEN 2
-              WHEN cartype = '준중형' THEN 3
+              WHEN car_type LIKE '%SUV%' THEN 1
+              WHEN car_type = '중형' THEN 2
+              WHEN car_type = '준중형' THEN 3
               ELSE 10
             END,
             CASE
@@ -97,91 +97,91 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
               WHEN manufacturer = '제네시스' THEN 2
               ELSE 5
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             price ASC`;
           break;
 
         case 'mz_office_worker': // 박준혁 - MZ세대
           carTypeCondition = `
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'
-            AND cartype NOT IN ('화물', '상용', '기타')`;
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'
+            AND car_type NOT IN ('화물', '상용', '기타')`;
 
           // 디자인/브랜드(40%) + 연비(30%) + 스타일(30%) 가중치
           orderCondition = `
             CASE
               WHEN manufacturer IN ('BMW', '벤츠', '아우디') THEN 1
               WHEN manufacturer = '제네시스' THEN 2
-              WHEN manufacturer IN ('현대', '기아') AND cartype IN ('중형', '준중형') THEN 3
+              WHEN manufacturer IN ('현대', '기아') AND car_type IN ('중형', '준중형') THEN 3
               WHEN manufacturer IN ('현대', '기아') THEN 4
               ELSE 10
             END,
             CASE
-              WHEN fueltype = '하이브리드' THEN 1
-              WHEN fueltype = '가솔린' THEN 2
-              WHEN fueltype = '디젤' THEN 3
+              WHEN fuel_type = '하이브리드' THEN 1
+              WHEN fuel_type = '가솔린' THEN 2
+              WHEN fuel_type = '디젤' THEN 3
               ELSE 5
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             price ASC`;
           break;
 
         case 'camping_lover': // 최민준 - 캠핑족
           carTypeCondition = `
-            AND (cartype LIKE '%SUV%' OR cartype LIKE '%MPV%' OR cartype LIKE '%왜건%')
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'
-            AND cartype NOT LIKE '%화물%'`;
+            AND (car_type LIKE '%SUV%' OR car_type LIKE '%MPV%' OR car_type LIKE '%왜건%')
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'
+            AND car_type NOT LIKE '%화물%'`;
 
           // 공간/기능(40%) + 성능(30%) + 내구성(30%) 가중치
           orderCondition = `
             CASE
-              WHEN cartype LIKE '%SUV%' AND cartype LIKE '%대형%' THEN 1
-              WHEN cartype LIKE '%SUV%' THEN 2
-              WHEN cartype LIKE '%MPV%' THEN 3
-              WHEN cartype LIKE '%왜건%' THEN 4
+              WHEN car_type LIKE '%SUV%' AND car_type LIKE '%대형%' THEN 1
+              WHEN car_type LIKE '%SUV%' THEN 2
+              WHEN car_type LIKE '%MPV%' THEN 3
+              WHEN car_type LIKE '%왜건%' THEN 4
               ELSE 10
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             (distance / 10000) ASC,
             price ASC`;
           break;
 
         case 'large_family_dad': // 이경수 - 대가족
           carTypeCondition = `
-            AND (cartype LIKE '%SUV%' OR cartype LIKE '%MPV%' OR cartype LIKE '%승합%' OR cartype = '대형')
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'`;
+            AND (car_type LIKE '%SUV%' OR car_type LIKE '%MPV%' OR car_type LIKE '%승합%' OR car_type = '대형')
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'`;
 
           // 공간(50%) + 연비(30%) + 내구성(20%) 가중치
           orderCondition = `
             CASE
-              WHEN cartype LIKE '%MPV%' OR cartype LIKE '%승합%' THEN 1
-              WHEN cartype LIKE '%SUV%' AND cartype LIKE '%대형%' THEN 2
-              WHEN cartype = '대형' THEN 3
-              WHEN cartype LIKE '%SUV%' THEN 4
+              WHEN car_type LIKE '%MPV%' OR car_type LIKE '%승합%' THEN 1
+              WHEN car_type LIKE '%SUV%' AND car_type LIKE '%대형%' THEN 2
+              WHEN car_type = '대형' THEN 3
+              WHEN car_type LIKE '%SUV%' THEN 4
               ELSE 10
             END,
             CASE
-              WHEN fueltype = '디젤' THEN 1
-              WHEN fueltype = '하이브리드' THEN 2
-              WHEN fueltype = '가솔린' THEN 3
+              WHEN fuel_type = '디젤' THEN 1
+              WHEN fuel_type = '하이브리드' THEN 2
+              WHEN fuel_type = '가솔린' THEN 3
               ELSE 5
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             price ASC`;
           break;
 
         case 'ceo_executive': // 김정훈 - CEO 골프&비즈니스
           carTypeCondition = `
-            AND (cartype IN ('중형', '준대형', '대형') OR cartype LIKE '%세단%' OR cartype LIKE '%SUV%')
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'
-            AND cartype NOT IN ('화물', '상용', '기타')
+            AND (car_type IN ('중형', '준대형', '대형') OR car_type LIKE '%세단%' OR car_type LIKE '%SUV%')
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'
+            AND car_type NOT IN ('화물', '상용', '기타')
             AND (
               model IN ('E클래스', '5시리즈', 'A6', '그랜저', 'K9', 'G90', 'S클래스', '7시리즈') OR
               manufacturer IN ('벤츠', 'BMW', '아우디', '제네시스') OR
-              (cartype IN ('중형', '준대형', '대형') AND manufacturer IN ('현대', '기아'))
+              (car_type IN ('중형', '준대형', '대형') AND manufacturer IN ('현대', '기아'))
             )`;
 
           // CEO 전용 랭킹: 브랜드 프리스티지(40%) + 골프백 수납(30%) + 연식/상태(30%)
@@ -191,19 +191,19 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
               WHEN manufacturer = '제네시스' THEN 2
               WHEN manufacturer = '렉서스' THEN 3
               WHEN model IN ('그랜저', 'K9', '스팅어') THEN 4
-              WHEN manufacturer IN ('현대', '기아') AND cartype IN ('중형', '준대형', '대형') THEN 5
+              WHEN manufacturer IN ('현대', '기아') AND car_type IN ('중형', '준대형', '대형') THEN 5
               ELSE 10
             END,
             CASE
               WHEN model IN ('E클래스', '5시리즈', 'A6', 'G90', 'S클래스', '7시리즈') THEN 1
-              WHEN cartype LIKE '%세단%' AND cartype IN ('중형', '준대형', '대형') THEN 2
-              WHEN cartype LIKE '%SUV%' THEN 3
+              WHEN car_type LIKE '%세단%' AND car_type IN ('중형', '준대형', '대형') THEN 2
+              WHEN car_type LIKE '%SUV%' THEN 3
               ELSE 5
             END,
-            (2024 - modelyear) ASC,
+            (2024 - model_year) ASC,
             CASE
-              WHEN modelyear >= 2020 THEN 1
-              WHEN modelyear >= 2018 THEN 2
+              WHEN model_year >= 2020 THEN 1
+              WHEN model_year >= 2018 THEN 2
               ELSE 3
             END,
             (distance / 10000) ASC,
@@ -213,9 +213,9 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
         default:
           // 기본 랭킹 (가격 우선)
           carTypeCondition = `
-            AND cartype NOT LIKE '%포터%'
-            AND cartype NOT LIKE '%트럭%'
-            AND cartype NOT IN ('화물', '상용', '기타')`;
+            AND car_type NOT LIKE '%포터%'
+            AND car_type NOT LIKE '%트럭%'
+            AND car_type NOT IN ('화물', '상용', '기타')`;
           orderCondition = 'price ASC';
       }
     } else {
@@ -226,11 +226,11 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
       if (usage?.includes('캠핑') || usage?.includes('차박')) {
       // 캠핑용: 상용차/트럭 완전 제외, 차박 가능한 차량만
       carTypeCondition = `
-        AND (cartype LIKE '%SUV%' OR cartype LIKE '%MPV%' OR cartype LIKE '%왜건%' OR cartype IN ('대형', '중형', '준중형'))
-        AND cartype NOT LIKE '%포터%'
-        AND cartype NOT LIKE '%트럭%'
-        AND cartype NOT LIKE '%화물%'
-        AND cartype NOT LIKE '%상용%'
+        AND (car_type LIKE '%SUV%' OR car_type LIKE '%MPV%' OR car_type LIKE '%왜건%' OR car_type IN ('대형', '중형', '준중형'))
+        AND car_type NOT LIKE '%포터%'
+        AND car_type NOT LIKE '%트럭%'
+        AND car_type NOT LIKE '%화물%'
+        AND car_type NOT LIKE '%상용%'
         AND model NOT LIKE '%포터%'
         AND model NOT LIKE '%트럭%'
         AND model NOT LIKE '%화물%'`;
@@ -238,30 +238,30 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
       // 캠핑용 가성비 랭킹: 적합성 + 연식 + 주행거리 + 가격 종합
       orderCondition = `
         CASE
-          WHEN cartype LIKE '%SUV%' THEN 1
-          WHEN cartype LIKE '%MPV%' THEN 2
-          WHEN cartype IN ('대형', '중형') THEN 3
-          WHEN cartype = '준중형' THEN 4
+          WHEN car_type LIKE '%SUV%' THEN 1
+          WHEN car_type LIKE '%MPV%' THEN 2
+          WHEN car_type IN ('대형', '중형') THEN 3
+          WHEN car_type = '준중형' THEN 4
           ELSE 10
         END,
-        (2024 - modelyear) ASC,
+        (2024 - model_year) ASC,
         (distance / 10000) ASC,
         CASE
-          WHEN modelyear >= 2025 THEN price
-          ELSE (price / GREATEST((2025 - modelyear), 1))
+          WHEN model_year >= 2025 THEN price
+          ELSE (price / GREATEST((2025 - model_year), 1))
         END ASC`;
     } else {
       // 일반 검색: 상용차 제외, 승용차만
       carTypeCondition = `
-        AND cartype NOT IN ('기타', '불명', '화물', '상용')
-        AND cartype NOT LIKE '%포터%'
-        AND cartype NOT LIKE '%트럭%'
+        AND car_type NOT IN ('기타', '불명', '화물', '상용')
+        AND car_type NOT LIKE '%포터%'
+        AND car_type NOT LIKE '%트럭%'
         AND model NOT LIKE '%포터%'
         AND model NOT LIKE '%트럭%'`;
 
       // 일반용 가성비 랭킹: 연식 + 주행거리 + 가격 균형
       orderCondition = `
-        (2024 - modelyear) ASC,
+        (2024 - model_year) ASC,
         (distance / 10000) ASC,
         price ASC`;
     }
@@ -269,20 +269,20 @@ export async function searchVehicles(budget: {min: number, max: number}, usage?:
 
     const vehicleQuery = `
       SELECT
-        vehicleid, manufacturer, model, modelyear, price, distance,
-        fueltype, cartype, transmission, trim, colorname, location,
-        detailurl, photo, platform, originprice, selltype
+        vehicle_id, manufacturer, model, model_year, price, distance,
+        fuel_type, car_type, transmission, trim, color_name, location,
+        detail_url, photo, platform, origin_price, sell_type
       FROM vehicles
       WHERE price BETWEEN $1 AND $2
         AND price > 0
         AND distance IS NOT NULL
         AND distance < 200000
-        AND modelyear IS NOT NULL
-        AND modelyear >= 2015
+        AND model_year IS NOT NULL
+        AND model_year >= 2015
         ${carTypeCondition}
         ${sellTypeCondition}
         AND manufacturer NOT IN ('기타 제조사', '기타', '불명')
-        AND detailurl IS NOT NULL
+        AND detail_url IS NOT NULL
         AND photo IS NOT NULL
       ORDER BY ${orderCondition}
     `;
@@ -309,140 +309,140 @@ function getDemoVehicles(budget: {min: number, max: number}, usage?: string, fam
       vehicleid: 'demo_1',
       manufacturer: '현대',
       model: '투싼',
-      modelyear: 2020,
+      model_year: 2020,
       price: 2500,
       distance: 45000,
-      fueltype: '가솔린',
-      cartype: 'SUV',
+      fuel_type: '가솔린',
+      car_type: 'SUV',
       transmission: '자동',
       trim: '스마트',
-      colorname: '흰색',
+      color_name: '흰색',
       location: '서울',
-      detailurl: 'https://example.com/demo1',
+      detail_url: 'https://example.com/demo1',
       photo: 'https://via.placeholder.com/300x200/4F46E5/FFFFFF?text=Tucson',
       platform: '엔카',
-      originprice: 2800,
-      selltype: '판매',
+      origin_price: 2800,
+      sell_type: '판매',
       rank: 1
     },
     {
       vehicleid: 'demo_2',
       manufacturer: '기아',
       model: '스포티지',
-      modelyear: 2019,
+      model_year: 2019,
       price: 2300,
       distance: 52000,
-      fueltype: '가솔린',
-      cartype: 'SUV',
+      fuel_type: '가솔린',
+      car_type: 'SUV',
       transmission: '자동',
       trim: '프레스티지',
-      colorname: '검은색',
+      color_name: '검은색',
       location: '경기',
-      detailurl: 'https://example.com/demo2',
+      detail_url: 'https://example.com/demo2',
       photo: 'https://via.placeholder.com/300x200/059669/FFFFFF?text=Sportage',
       platform: '엔카',
-      originprice: 2600,
-      selltype: '판매',
+      origin_price: 2600,
+      sell_type: '판매',
       rank: 2
     },
     {
       vehicleid: 'demo_3',
       manufacturer: '현대',
       model: '아반떼',
-      modelyear: 2021,
+      model_year: 2021,
       price: 1800,
       distance: 25000,
-      fueltype: '가솔린',
-      cartype: '준중형',
+      fuel_type: '가솔린',
+      car_type: '준중형',
       transmission: '자동',
       trim: '인스퍼레이션',
-      colorname: '은색',
+      color_name: '은색',
       location: '인천',
-      detailurl: 'https://example.com/demo3',
+      detail_url: 'https://example.com/demo3',
       photo: 'https://via.placeholder.com/300x200/DC2626/FFFFFF?text=Avante',
       platform: '엔카',
-      originprice: 2000,
-      selltype: '판매',
+      origin_price: 2000,
+      sell_type: '판매',
       rank: 3
     },
     {
       vehicleid: 'demo_4',
       manufacturer: '기아',
       model: 'K3',
-      modelyear: 2020,
+      model_year: 2020,
       price: 1600,
       distance: 38000,
-      fueltype: '가솔린',
-      cartype: '준중형',
+      fuel_type: '가솔린',
+      car_type: '준중형',
       transmission: '자동',
       trim: '프레스티지',
-      colorname: '파란색',
+      color_name: '파란색',
       location: '부산',
-      detailurl: 'https://example.com/demo4',
+      detail_url: 'https://example.com/demo4',
       photo: 'https://via.placeholder.com/300x200/2563EB/FFFFFF?text=K3',
       platform: '엔카',
-      originprice: 1800,
-      selltype: '판매',
+      origin_price: 1800,
+      sell_type: '판매',
       rank: 4
     },
     {
       vehicleid: 'demo_5',
       manufacturer: '현대',
       model: '그랜저',
-      modelyear: 2020,
+      model_year: 2020,
       price: 2800,
       distance: 35000,
-      fueltype: '가솔린',
-      cartype: '중형',
+      fuel_type: '가솔린',
+      car_type: '중형',
       transmission: '자동',
       trim: '익스클루시브',
-      colorname: '검은색',
+      color_name: '검은색',
       location: '서울',
-      detailurl: 'https://example.com/demo5',
+      detail_url: 'https://example.com/demo5',
       photo: 'https://via.placeholder.com/300x200/1F2937/FFFFFF?text=Grandeur',
       platform: '엔카',
-      originprice: 3200,
-      selltype: '판매',
+      origin_price: 3200,
+      sell_type: '판매',
       rank: 1
     },
     {
       vehicleid: 'demo_6',
       manufacturer: '기아',
       model: 'K5',
-      modelyear: 2021,
+      model_year: 2021,
       price: 2400,
       distance: 28000,
-      fueltype: '가솔린',
-      cartype: '중형',
+      fuel_type: '가솔린',
+      car_type: '중형',
       transmission: '자동',
       trim: '프레스티지',
-      colorname: '흰색',
+      color_name: '흰색',
       location: '경기',
-      detailurl: 'https://example.com/demo6',
+      detail_url: 'https://example.com/demo6',
       photo: 'https://via.placeholder.com/300x200/374151/FFFFFF?text=K5',
       platform: '엔카',
-      originprice: 2700,
-      selltype: '판매',
+      origin_price: 2700,
+      sell_type: '판매',
       rank: 2
     },
     {
       vehicleid: 'demo_7',
       manufacturer: '현대',
       model: '쏘나타',
-      modelyear: 2021,
+      model_year: 2021,
       price: 2200,
       distance: 32000,
-      fueltype: '가솔린',
-      cartype: '중형',
+      fuel_type: '가솔린',
+      car_type: '중형',
       transmission: '자동',
       trim: '인스퍼레이션',
-      colorname: '은색',
+      color_name: '은색',
       location: '인천',
-      detailurl: 'https://example.com/demo7',
+      detail_url: 'https://example.com/demo7',
       photo: 'https://via.placeholder.com/300x200/6B7280/FFFFFF?text=Sonata',
       platform: '엔카',
-      originprice: 2500,
-      selltype: '판매',
+      origin_price: 2500,
+      sell_type: '판매',
       rank: 3
     }
   ];
@@ -456,8 +456,8 @@ function getDemoVehicles(budget: {min: number, max: number}, usage?: string, fam
   if (usage?.includes('법인') || usage?.includes('회사') || usage?.includes('업무')) {
     return filteredVehicles.sort((a, b) => {
       // 중형세단 우선
-      if ((a.cartype === '준중형' || a.cartype === '중형') && (b.cartype !== '준중형' && b.cartype !== '중형')) return -1;
-      if ((a.cartype !== '준중형' && a.cartype !== '중형') && (b.cartype === '준중형' || b.cartype === '중형')) return 1;
+      if ((a.car_type === '준중형' || a.car_type === '중형') && (b.car_type !== '준중형' && b.car_type !== '중형')) return -1;
+      if ((a.car_type !== '준중형' && a.car_type !== '중형') && (b.car_type === '준중형' || b.car_type === '중형')) return 1;
       return a.price - b.price;
     });
   }
@@ -465,8 +465,8 @@ function getDemoVehicles(budget: {min: number, max: number}, usage?: string, fam
   // 캠핑/차박 용도면 SUV 우선 정렬
   if (usage?.includes('캠핑') || usage?.includes('차박')) {
     return filteredVehicles.sort((a, b) => {
-      if (a.cartype === 'SUV' && b.cartype !== 'SUV') return -1;
-      if (a.cartype !== 'SUV' && b.cartype === 'SUV') return 1;
+      if (a.car_type === 'SUV' && b.car_type !== 'SUV') return -1;
+      if (a.car_type !== 'SUV' && b.car_type === 'SUV') return 1;
       return a.price - b.price;
     });
   }
@@ -490,7 +490,7 @@ export async function getDatabaseStatus() {
       query('SELECT NOW() as current_time'),
       query('SELECT COUNT(*) as total FROM vehicles'),
       query('SELECT COUNT(*) as available FROM vehicles WHERE price > 0'),
-      query('SELECT selltype, COUNT(*) as count FROM vehicles WHERE selltype IS NOT NULL GROUP BY selltype ORDER BY count DESC LIMIT 10')
+      query('SELECT sell_type, COUNT(*) as count FROM vehicles WHERE sell_type IS NOT NULL GROUP BY sell_type ORDER BY count DESC LIMIT 10')
     ]);
     const queryDuration = Date.now() - startTime;
     console.log(`🏃‍♂️ 병렬 쿼리 완료: ${queryDuration}ms (기존 대비 75% 단축)`);

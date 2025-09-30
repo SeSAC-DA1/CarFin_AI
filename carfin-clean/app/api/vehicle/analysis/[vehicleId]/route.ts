@@ -4,12 +4,13 @@ import { VehicleAnalysisEngine } from '@/lib/analysis/VehicleAnalysisEngine';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { vehicleId: string } }
+  { params }: { params: Promise<{ vehicleId: string }> }
 ) {
-  console.log(`🔍 실제 차량 분석 요청: ${params.vehicleId}`);
+  const resolvedParams = await params;
+  console.log(`🔍 실제 차량 분석 요청: ${resolvedParams.vehicleId}`);
 
   try {
-    const vehicleId = params.vehicleId;
+    const vehicleId = resolvedParams.vehicleId;
 
     console.log(`🔍 실제 차량 분석 시작: ${vehicleId}`);
 

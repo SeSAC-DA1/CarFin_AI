@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { VehicleOptionAnalyzer } from '@/lib/valuation/VehicleOptionAnalyzer';
 
 interface VehicleForRanking {
-  vehicleid?: string;
+  vehicle_id?: string;
   manufacturer: string;
   model: string;
   modelyear: number;

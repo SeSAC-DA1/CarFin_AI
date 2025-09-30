@@ -1,0 +1,175 @@
+name: 🚀 Deploy to Vercel
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # 빌드 및 테스트 작업
+  build-and-test:
+    name: 🔨 Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🔍 Run TypeScript check
+      run: npx tsc --noEmit
+
+    - name: 🏗️ Build application
+      run: npm run build
+      env:
+        # 빌드에 필요한 환경변수들
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        NODE_ENV: production
+        NEXT_TELEMETRY_DISABLED: 1
+
+  # Preview 배포 (PR용)
+  deploy-preview:
+    name: 🔍 Deploy Preview
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install Vercel CLI
+      run: npm install --global vercel@latest
+
+    - name: 🔧 Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+    - name: 🏗️ Build Project Artifacts
+      run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+    - name: 🚀 Deploy Project Artifacts to Vercel
+      run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
+  # Production 배포 (main 브랜치용)
+  deploy-production:
+    name: 🌟 Deploy Production
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 📦 Install Vercel CLI
+      run: npm install --global vercel@latest
+
+    - name: 🔧 Pull Vercel Environment Information
+      run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+    - name: 🏗️ Build Project Artifacts
+      run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+    - name: 🚀 Deploy Project Artifacts to Vercel
+      run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+    - name: 🎯 Update Deployment Status
+      run: |
+        echo "🎉 Production deployment completed!"
+        echo "🌐 URL: https://carfin-ai.vercel.app"
+
+  # 배포 후 헬스체크
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: 🔍 Wait for deployment
+      run: sleep 30
+
+    - name: 🏥 Check main page
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://carfin-ai.vercel.app)
+        if [ $response -eq 200 ]; then
+          echo "✅ Main page is healthy (HTTP $response)"
+        else
+          echo "❌ Main page failed (HTTP $response)"
+          exit 1
+        fi
+
+    - name: 🔍 Check database status API
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://carfin-ai.vercel.app/api/database/status)
+        if [ $response -eq 200 ]; then
+          echo "✅ Database API is healthy (HTTP $response)"
+        else
+          echo "❌ Database API failed (HTTP $response)"
+          exit 1
+        fi
+
+    - name: 🚗 Check vehicle analysis API
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://carfin-ai.vercel.app/api/vehicle/analysis/319258)
+        if [ $response -eq 200 ]; then
+          echo "✅ Vehicle Analysis API is healthy (HTTP $response)"
+        else
+          echo "❌ Vehicle Analysis API failed (HTTP $response)"
+          exit 1
+        fi
+
+  # 배포 성공 알림
+  notification:
+    name: 📢 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-production, health-check]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: 🎉 Success Notification
+      if: needs.deploy-production.result == 'success' && needs.health-check.result == 'success'
+      run: |
+        echo "🚀 CarFin AI 배포 성공!"
+        echo "🌐 URL: https://carfin-ai.vercel.app"
+        echo "📊 Database: 170K+ 매물 연동"
+        echo "🤖 AI Analysis: 정상 작동"
+        echo "⏱️ 배포 시간: $(date)"
+
+    - name: ❌ Failure Notification
+      if: needs.deploy-production.result == 'failure' || needs.health-check.result == 'failure'
+      run: |
+        echo "❌ CarFin AI 배포 실패!"
+        echo "🔍 로그를 확인하여 문제를 해결해주세요."
+        exit 1

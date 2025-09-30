@@ -3,15 +3,15 @@
 import { Pool } from 'pg';
 
 interface VehicleData {
-  vehicleid: number;
+  vehicle_id: number;
   model: string;
   manufacturer: string;
-  modelyear: number;
+  model_year: number;
   price: number;
   distance: number;
   firstregistrationdate: Date;
   options: string;
-  fueltype?: string;
+  fuel_type?: string;
   transmission?: string;
 }
 
@@ -107,10 +107,10 @@ export class VehicleAnalysisEngine {
         v.*,
         STRING_AGG(DISTINCT om.option_name, ', ' ORDER BY om.option_name) AS options
       FROM vehicles v
-      LEFT JOIN vehicle_options vo ON v.vehicleid = vo.vehicle_id
+      LEFT JOIN vehicle_options vo ON v.vehicle_id = vo.vehicle_id
       LEFT JOIN option_masters om ON vo.option_id = om.option_id
-      WHERE v.vehicleid = $1
-      GROUP BY v.vehicleid
+      WHERE v.vehicle_id = $1
+      GROUP BY v.vehicle_id
     `;
 
     const result = await this.pool.query(query, [vehicleId]);
@@ -122,7 +122,7 @@ export class VehicleAnalysisEngine {
    */
   private async buildPeerGroup(target: VehicleData): Promise<VehicleData[]> {
     const currentYear = new Date().getFullYear();
-    const targetAge = currentYear - target.modelyear;
+    const targetAge = currentYear - target.model_year;
 
     // 연식 범위를 점진적으로 확장하면서 충분한 표본 확보
     for (const ageRange of [1, 2, 3]) {
@@ -131,26 +131,26 @@ export class VehicleAnalysisEngine {
           v.*,
           STRING_AGG(DISTINCT om.option_name, ', ' ORDER BY om.option_name) AS options
         FROM vehicles v
-        LEFT JOIN vehicle_options vo ON v.vehicleid = vo.vehicle_id
+        LEFT JOIN vehicle_options vo ON v.vehicle_id = vo.vehicle_id
         LEFT JOIN option_masters om ON vo.option_id = om.option_id
         WHERE v.model = $1
-          AND v.vehicleid != $2
-          AND v.modelyear BETWEEN $3 AND $4
+          AND v.vehicle_id != $2
+          AND v.model_year BETWEEN $3 AND $4
           AND v.price > 10
-          ${ageRange <= 2 ? 'AND v.fueltype = $5 AND v.transmission = $6' : ''}
-        GROUP BY v.vehicleid
+          ${ageRange <= 2 ? 'AND v.fuel_type = $5 AND v.transmission = $6' : ''}
+        GROUP BY v.vehicle_id
         HAVING COUNT(*) >= 1
       `;
 
       const params = [
         target.model,
-        target.vehicleid,
-        target.modelyear - ageRange,
-        target.modelyear + ageRange
+        target.vehicle_id,
+        target.model_year - ageRange,
+        target.model_year + ageRange
       ];
 
       if (ageRange <= 2) {
-        params.push(target.fueltype || '', target.transmission || '');
+        params.push(target.fuel_type || '', target.transmission || '');
       }
 
       const result = await this.pool.query(query, params);
@@ -193,13 +193,13 @@ export class VehicleAnalysisEngine {
     const priceCompetitiveness = 100 - this.calculatePercentileScore(peerPrices, targetLogPrice);
 
     // 연식 대비 주행거리 (낮을수록 좋음)
-    const targetMileagePerYear = target.distance / Math.max(1, currentYear - target.modelyear);
-    const peerMileagePerYear = peers.map(p => p.distance / Math.max(1, currentYear - p.modelyear));
+    const targetMileagePerYear = target.distance / Math.max(1, currentYear - target.model_year);
+    const peerMileagePerYear = peers.map(p => p.distance / Math.max(1, currentYear - p.model_year));
     const mileageVsAge = 100 - this.calculatePercentileScore(peerMileagePerYear, targetMileagePerYear);
 
     // 연식 경쟁력 (새로울수록 좋음)
-    const targetAge = currentYear - target.modelyear;
-    const peerAges = peers.map(p => currentYear - p.modelyear);
+    const targetAge = currentYear - target.model_year;
+    const peerAges = peers.map(p => currentYear - p.model_year);
     const ageCompetitiveness = 100 - this.calculatePercentileScore(peerAges, targetAge);
 
     // 옵션 경쟁력 (TF-IDF 기반)
@@ -491,7 +491,7 @@ export class VehicleAnalysisEngine {
     const recommendation = this.generateRecommendation(overallScore, scores, reviewAnalysis.sentiment);
 
     return {
-      vehicleId: target.vehicleid.toString(),
+      vehicleId: target.vehicle_id.toString(),
       overallScore,
       priceCompetitiveness: scores.priceCompetitiveness,
       mileageVsAge: scores.mileageVsAge,
