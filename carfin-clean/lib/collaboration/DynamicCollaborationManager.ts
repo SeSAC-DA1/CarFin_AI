@@ -2064,7 +2064,7 @@ ${topVehicles}${statisticalContext}
       discoveredNeedsCount: this.currentSession.discoveredNeeds.length,
       satisfactionLevel: this.currentSession.satisfactionLevel,
       collaborationState: this.currentSession.collaborationState,
-      duration: new Date().getTime() - new Date(this.currentSession.startTime).getTime(),
+      duration: this.currentSession.startTime ? new Date().getTime() - new Date(this.currentSession.startTime).getTime() : 0,
       lastActivity: this.currentSession.lastActivity
     };
   }

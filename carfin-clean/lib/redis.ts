@@ -485,6 +485,38 @@ export const redis = {
     }
   },
 
+  // 🚀 일반 데이터 캐싱 (범용 사용)
+  cacheData: async (key: string, data: any, ttlSeconds: number = 300) => {
+    try {
+      const manager = RedisManager.getInstance();
+      const client = await manager.getClient();
+
+      await client.setEx(`data:${key}`, ttlSeconds, JSON.stringify(data));
+      console.log(`💾 데이터 캐시 저장: ${key} (${ttlSeconds}초 TTL)`);
+    } catch (error) {
+      console.error(`❌ 데이터 캐시 저장 실패: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+    }
+  },
+
+  getCachedData: async (key: string): Promise<any | null> => {
+    try {
+      const manager = RedisManager.getInstance();
+      const client = await manager.getClient();
+
+      const cached = await client.get(`data:${key}`);
+      if (cached) {
+        console.log(`⚡ 데이터 캐시 히트: ${key}`);
+        return JSON.parse(cached);
+      }
+      return null;
+    } catch (error) {
+      console.error(`❌ 데이터 캐시 조회 실패: ${error.message}`);
+      console.log(`🔄 캐싱 실패해도 서비스는 계속 진행합니다`);
+      return null;
+    }
+  },
+
   // Redis 연결 테스트
   testConnection: async (): Promise<boolean> => {
     try {

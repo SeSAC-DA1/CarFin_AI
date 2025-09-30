@@ -12,7 +12,9 @@ import QuestionProgressBar from '@/components/welcome/QuestionProgressBar';
 import CarFinWaitingUI from '@/components/ui/CarFinWaitingUI';
 import CEODemoScenario from '@/components/demo/CEODemoScenario';
 import SatisfactionFeedback from '@/components/feedback/SatisfactionFeedback';
+import RealTimeStatusPanel from '@/components/ui/RealTimeStatusPanel';
 import { DemoPersona } from '@/lib/collaboration/PersonaDefinitions';
+import { ConversationFilterExtractor } from '@/lib/search/ConversationFilterExtractor';
 
 interface Message {
   id: string;
@@ -110,6 +112,21 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
   const [showSatisfactionFeedback, setShowSatisfactionFeedback] = useState(false);
   const [feedbackData, setFeedbackData] = useState<any>(null);
 
+  // 🎯 실시간 상황표 상태
+  interface FilterCondition {
+    type: 'carType' | 'priceRange' | 'fuelEfficiency' | 'brand' | 'features' | 'year' | 'mileage';
+    label: string;
+    value: string;
+    priority: number;
+    impact: number;
+  }
+
+  const [totalVehicles, setTotalVehicles] = useState(170412);
+  const [currentMatches, setCurrentMatches] = useState(170412);
+  const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [isProcessingFilters, setIsProcessingFilters] = useState(false);
+  const filterExtractor = new ConversationFilterExtractor();
+
   // 🔧 사용자 ID 초기화 및 이전 대화 복원
   useEffect(() => {
     const initializeUserSession = async () => {
@@ -133,6 +150,83 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
 
     initializeUserSession();
   }, []);
+
+  // 🎯 실시간 필터 업데이트 함수
+  const updateRealTimeFilters = async (userMessage: string) => {
+    if (!userMessage.trim()) return;
+
+    setIsProcessingFilters(true);
+
+    try {
+      // 1. AI로 대화에서 조건 추출
+      const conversationContext = messages
+        .filter(msg => msg.agent === 'user')
+        .map(msg => msg.content);
+
+      const extracted = await filterExtractor.extractFilters(
+        userMessage,
+        conversationContext
+      );
+
+      console.log('✅ 추출된 필터 조건:', extracted);
+
+      if (extracted.conditions.length > 0) {
+        // 2. 새로운 필터 조건들을 추가/업데이트
+        const updatedFilters = [...activeFilters];
+
+        extracted.conditions.forEach(newCondition => {
+          // 기존에 같은 타입의 필터가 있으면 교체, 없으면 추가
+          const existingIndex = updatedFilters.findIndex(f => f.type === newCondition.type);
+
+          const filterWithImpact = {
+            ...newCondition,
+            impact: 0 // 임시값, 서버에서 계산됨
+          };
+
+          if (existingIndex >= 0) {
+            updatedFilters[existingIndex] = filterWithImpact;
+          } else {
+            updatedFilters.push(filterWithImpact);
+          }
+        });
+
+        // 3. 서버에서 실시간 카운트 요청
+        const countResponse = await fetch('/api/search/count', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filters: updatedFilters })
+        });
+
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+
+          // 4. UI 업데이트
+          setCurrentMatches(countData.currentMatches);
+          setTotalVehicles(countData.totalVehicles);
+
+          // 5. 필터 임팩트 정보 업데이트
+          const filtersWithImpact = updatedFilters.map(filter => {
+            const impact = countData.filterImpacts.find((fi: any) =>
+              fi.filter.type === filter.type
+            );
+            return {
+              ...filter,
+              impact: impact?.impact || 0
+            };
+          });
+
+          setActiveFilters(filtersWithImpact);
+
+          console.log(`🎯 필터 업데이트 완료: ${countData.currentMatches.toLocaleString()}대 매칭`);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ 실시간 필터 업데이트 실패:', error);
+    } finally {
+      setIsProcessingFilters(false);
+    }
+  };
 
   // 📝 대화 저장 함수
   const saveConversation = async (newMessages: Message[]) => {
@@ -348,6 +442,9 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
 
     setMessages([userMessage]);
     setQuestionCount(1); // 첫 번째 질문
+
+    // 🎯 첫 번째 질문에서도 실시간 필터 업데이트
+    updateRealTimeFilters(initialQuestion);
 
     // AI 분석 즉시 시작
     startRealAIAnalysis(initialQuestion);
@@ -670,6 +767,9 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
     }
     setQuestionCount(prev => prev + 1); // 질문 카운터 증가
 
+    // 🎯 실시간 필터 업데이트 (병렬 처리)
+    updateRealTimeFilters(messageContent);
+
     // 추가 질문도 WebSocket 스트리밍으로 처리
     startRealAIAnalysis(question);
   };
@@ -786,16 +886,26 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
 
         {/* CarFin 실시간 동적 사이드바 */}
         <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+
+          {/* 🎯 실시간 상황표 - 최상단 */}
+          <RealTimeStatusPanel
+            totalVehicles={totalVehicles}
+            currentMatches={currentMatches}
+            activeFilters={activeFilters}
+            isProcessing={isProcessingFilters}
+            lastUpdate={new Date()}
+          />
+
           {/* CEO 전용 안심 메시지 또는 일반 안심 메시지 */}
           {selectedPersona?.id === 'ceo_executive' ? (
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
               <div className="text-center">
                 <div className="text-3xl mb-2">👔</div>
-                <h3 className="font-bold text-slate-800 mb-2">CEO 전용 서비스</h3>
+                <h3 className="font-bold text-slate-800 mb-2">프리미엄 개인화 상담</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   골프, 비즈니스, 절세 효과까지<br />
-                  <strong>김정훈 대표님</strong>의 모든 니즈를 고려한<br />
-                  프리미엄 상담이 진행됩니다
+                  고객님의 모든 니즈를 고려한<br />
+                  맞춤 상담이 진행됩니다
                 </p>
               </div>
             </div>
@@ -803,7 +913,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
               <div className="text-center">
                 <div className="text-3xl mb-2">😊</div>
-                <h3 className="font-bold text-slate-800 mb-2">걱정 끝!</h3>
+                <h3 className="font-bold text-slate-800 mb-2">개인화 AI 상담</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   A2A 협업 시스템으로 {selectedPersona?.name || '고객님'}만을 위한
                   최적의 차량을 분석하고 있습니다
