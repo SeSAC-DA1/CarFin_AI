@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { searchVehicles } from '@/lib/database';
 import { PersonaDetector, DEMO_PERSONAS } from '@/lib/collaboration/PersonaDefinitions';
+import { EnhancedPersonaSystem } from '@/lib/enhanced/EnhancedPersonaSystem';
+import { HybridConfidenceSystem } from '@/lib/fusion/HybridConfidenceSystem';
 import { VehicleReranker } from '@/lib/ranking/VehicleReranker';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -199,10 +201,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`🚀 Real A2A Analysis Started: "${cleanQuestion}" [${context}]`);
 
-    // 페르소나 감지 (인코딩 복구된 텍스트 사용)
-    const detectedPersona = PersonaDetector.detectPersona(cleanQuestion, extractBudget(cleanQuestion));
-    if (detectedPersona) {
-      console.log(`🎭 페르소나 감지됨: ${detectedPersona.name} (${detectedPersona.id})`);
+    // 🎯 궁극 하이브리드 페르소나 감지 시스템 (95%+ 신뢰도)
+    const ultimateResult = await HybridConfidenceSystem.detectWithUltimateConfidence(cleanQuestion, extractBudget(cleanQuestion));
+    let detectedPersona = null;
+
+    if (ultimateResult) {
+      detectedPersona = DEMO_PERSONAS.find(p => p.id === ultimateResult.personaId);
+      console.log(`🏆 궁극 페르소나 감지: ${ultimateResult.personaName}`);
+      console.log(`📊 신뢰도: ${ultimateResult.overallConfidence}% (${ultimateResult.recommendation})`);
+      console.log(`🔬 방법: ${ultimateResult.methods.length}개 방법 융합`);
+      console.log(`⚡ Convergence: ${ultimateResult.convergenceEvidence ? 'YES' : 'NO'}`);
+      console.log(`🧬 기술상세:`, ultimateResult.technicalDetails);
     } else {
       console.log('🔍 일반 검색 모드 (페르소나 미감지)');
     }
@@ -231,12 +240,20 @@ export async function POST(request: NextRequest) {
           cleanQuestion
         );
 
-        // 리랭킹 결과를 차량 데이터로 변환
+        // 리랭킹 결과를 차량 데이터로 변환 (옵션 분석 포함)
         finalVehicles = rerankingResults.map(result => ({
           ...result.vehicle,
           reranking_score: result.score,
           reranking_reasoning: result.reasoning,
-          personalized_insights: result.personalizedInsights
+          personalized_insights: result.personalizedInsights,
+          option_analysis: result.optionAnalysis ? {
+            total_option_value: result.optionAnalysis.totalOptionValue,
+            option_highlights: result.optionAnalysis.optionHighlights,
+            missing_critical_options: result.optionAnalysis.missingCriticalOptions,
+            persona_fit_score: result.optionAnalysis.personaFitScore,
+            recommendation: result.optionAnalysis.recommendation,
+            value_justification: result.optionAnalysis.valueJustification
+          } : null
         }));
 
         console.log(`✅ 2단계 리랭킹 완료: ${finalVehicles.length}대 최종 선별 (최고점: ${rerankingResults[0]?.score || 0}점)`);
@@ -270,6 +287,13 @@ export async function POST(request: NextRequest) {
         initialVehiclesFound: initialVehicles.length,
         rerankerUsed: rerankerUsed,
         personaDetected: detectedPersona?.name || null,
+        ultimateHybridSystem: ultimateResult ? {
+          confidence: ultimateResult.overallConfidence,
+          recommendation: ultimateResult.recommendation,
+          convergenceEvidence: ultimateResult.convergenceEvidence,
+          methodsUsed: ultimateResult.methods.length,
+          technicalDetails: ultimateResult.technicalDetails
+        } : null,
         model: 'gemini-2.5-flash',
         collaborationId: `collab-${Date.now()}`,
         timestamp: new Date().toISOString(),

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Send, Database, CheckCircle } from 'lucide-react';
-import ChatRoom from '@/components/chat/ChatRoom';
+import SimpleChatRoom from '@/components/chat/SimpleChatRoom';
 import PersonaDemoSelector from '@/components/demo/PersonaDemoSelector';
 import A2AVisualization from '@/components/ui/A2AVisualization';
 import { DemoPersona } from '@/lib/collaboration/PersonaDefinitions';
@@ -59,6 +59,8 @@ export default function Home() {
     setShowChatRoom(true);
   };
 
+
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isLoading) {
       handleSubmit();
@@ -71,9 +73,10 @@ export default function Home() {
     setIsA2AActive(false);
   }, []);
 
+
   if (showChatRoom) {
     return (
-      <ChatRoom
+      <SimpleChatRoom
         initialQuestion={initialQuestion}
         onBack={handleBack}
         selectedPersona={selectedPersona}
@@ -81,8 +84,10 @@ export default function Home() {
     );
   }
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50">
+
       {/* 데이터베이스 상태 표시 - 개선된 디자인 */}
       <div className="fixed top-4 right-4 z-50">
         <div className={`px-6 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center space-x-3 ${
@@ -237,19 +242,20 @@ export default function Home() {
               차량 구매에 대한 고민이나 질문을 자유롭게 입력해주세요. 3명의 AI 전문가가 도와드립니다.
             </div>
 
-            {/* 페르소나별 시연 시스템 */}
+            {/* 페르소나별 시연 시스템 + CEO 모드 */}
             <div className="mt-8 mb-12">
               {!showPersonaDemo ? (
-                <div className="text-center">
+                <div className="text-center space-y-4">
                   <button
                     onClick={() => setShowPersonaDemo(true)}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     🎭 6개 페르소나별 A2A 시연 보기
                   </button>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 mb-4">
                     다양한 고객 유형별로 어떻게 다른 A2A 협업이 이루어지는지 확인해보세요
                   </p>
+
                 </div>
               ) : (
                 <div>

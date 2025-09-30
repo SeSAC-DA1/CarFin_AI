@@ -3,7 +3,7 @@
 // 2차: LLM 기반 페르소나 맞춤 개인화 리랭킹 + 리뷰 감성분석 통합
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ReviewSentimentAnalyzer } from '@/lib/sentiment/ReviewSentimentAnalyzer';
+import { VehicleOptionAnalyzer } from '@/lib/valuation/VehicleOptionAnalyzer';
 
 interface VehicleForRanking {
   vehicleid?: string;
@@ -16,6 +16,7 @@ interface VehicleForRanking {
   cartype: string;
   location: string;
   color?: string;
+  options?: string; // 차량 옵션 정보
   [key: string]: any;
 }
 
@@ -33,6 +34,14 @@ interface RerankingResult {
   score: number;
   reasoning: string;
   personalizedInsights: string[];
+  optionAnalysis?: {
+    totalOptionValue: number;
+    optionHighlights: string[];
+    missingCriticalOptions: string[];
+    personaFitScore: number;
+    recommendation: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
+    valueJustification: string[];
+  };
   tcoAnalysis?: {
     averageTCO: number;
     bestValueVehicle: string;
@@ -42,41 +51,28 @@ interface RerankingResult {
 
 export class VehicleReranker {
   private genAI: GoogleGenerativeAI;
-  private sentimentAnalyzer: ReviewSentimentAnalyzer;
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.sentimentAnalyzer = new ReviewSentimentAnalyzer(apiKey);
   }
 
   /**
-   * 2단계 리랭킹 시스템의 핵심 메서드 (리뷰 감성분석 통합)
-   * 1차 필터링된 차량들을 페르소나별 맞춤 개인화 + 리뷰 감성분석으로 재정렬
+   * 2단계 리랭킹 시스템의 핵심 메서드 (차량 옵션 분석 + 페르소나 맞춤)
+   * 1차 필터링된 차량들을 페르소나별 맞춤 개인화 + 실제 옵션 데이터 분석으로 재정렬
    */
   async rerankVehicles(
     vehicles: VehicleForRanking[],
     persona: PersonaProfile,
     userContext: string
   ): Promise<RerankingResult[]> {
-    console.log(`🎯 2단계 리랭킹 시작: ${vehicles.length}대 → 페르소나 "${persona.name}" 맞춤 분석 + 리뷰 감성분석`);
+    console.log(`🎯 2단계 리랭킹 시작: ${vehicles.length}대 → 페르소나 "${persona.name}" 맞춤 분석 + 옵션 분석`);
 
     if (vehicles.length === 0) {
       return [];
     }
 
-    // 🔍 리뷰 감성분석 먼저 수행
-    console.log(`💭 1단계: 리뷰 감성분석 수행 중...`);
-    let sentimentResults: Map<string, any> = new Map();
-
-    try {
-      sentimentResults = await this.sentimentAnalyzer.analyzeVehicleReviews(vehicles, persona.id);
-      console.log(`✅ 리뷰 감성분석 완료: ${sentimentResults.size}대 분석됨`);
-    } catch (sentimentError) {
-      console.error('⚠️ 리뷰 감성분석 실패, 기본 점수 사용:', sentimentError);
-    }
-
-    // 🎭 LLM 기반 페르소나 리랭킹
-    console.log(`🎭 2단계: 페르소나 맞춤 리랭킹 수행 중...`);
+    // 🎭 LLM 기반 페르소나 리랭킹 + 옵션 분석
+    console.log(`🎭 페르소나 맞춤 리랭킹 + 옵션 분석 수행 중...`);
     const batchSize = 5; // 한 번에 5대씩 분석
     const batches = this.createBatches(vehicles, batchSize);
     const allResults: RerankingResult[] = [];
@@ -89,8 +85,7 @@ export class VehicleReranker {
           batches[i],
           persona,
           userContext,
-          i === 0, // 첫 번째 배치에서만 전체 분석
-          sentimentResults // 리뷰 감성분석 결과 전달
+          i === 0 // 첫 번째 배치에서만 전체 분석
         );
         allResults.push(...batchResults);
       } catch (error) {
@@ -120,14 +115,13 @@ export class VehicleReranker {
   }
 
   /**
-   * 배치 단위로 차량 분석 처리 (리뷰 감성분석 통합)
+   * 배치 단위로 차량 분석 처리 (옵션 분석 + 페르소나 맞춤)
    */
   private async processBatch(
     vehicles: VehicleForRanking[],
     persona: PersonaProfile,
     userContext: string,
-    isFirstBatch: boolean,
-    sentimentResults?: Map<string, any>
+    isFirstBatch: boolean
   ): Promise<RerankingResult[]> {
     const model = this.genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
@@ -136,20 +130,37 @@ export class VehicleReranker {
       }
     });
 
+    // 🚗 차량 옵션 분석 수행
+    const optionAnalysisResults = new Map<string, any>();
+    for (const vehicle of vehicles) {
+      try {
+        if (vehicle.options) {
+          const vehicleOptions = vehicle.options.split(',').map(opt => opt.trim());
+          const optionAnalysis = VehicleOptionAnalyzer.analyzeVehicleOptions(vehicleOptions, persona.id);
+          const key = `${vehicle.manufacturer}_${vehicle.model}_${vehicle.modelyear}`;
+          optionAnalysisResults.set(key, optionAnalysis);
+        }
+      } catch (error) {
+        console.warn(`⚠️ 옵션 분석 실패: ${vehicle.manufacturer} ${vehicle.model}`, error);
+      }
+    }
+
     const vehicleList = vehicles.map((v, idx) => {
       const key = `${v.manufacturer}_${v.model}_${v.modelyear}`;
-      const sentiment = sentimentResults?.get(key);
-      const sentimentInfo = sentiment
-        ? ` [감성점수: ${sentiment.sentimentScore}/100, 리뷰: ${sentiment.reviewCount}개]`
+      const optionAnalysis = optionAnalysisResults.get(key);
+
+      const optionInfo = optionAnalysis
+        ? ` [옵션가치: ${optionAnalysis.totalOptionValue}점, ${optionAnalysis.recommendation}]`
         : '';
-      return `${idx + 1}. ${v.manufacturer} ${v.model} ${v.modelyear}년 - ${v.price?.toLocaleString()}만원 (${v.distance?.toLocaleString()}km) [${v.fueltype}]${sentimentInfo}`;
+
+      return `${idx + 1}. ${v.manufacturer} ${v.model} ${v.modelyear}년 - ${v.price?.toLocaleString()}만원 (${v.distance?.toLocaleString()}km) [${v.fueltype}]${optionInfo}`;
     }).join('\n');
 
-    // 감성분석 요약 생성
-    const sentimentSummary = sentimentResults && sentimentResults.size > 0
-      ? `\n💭 리뷰 감성분석 요약:\n${Array.from(sentimentResults.entries()).map(([key, sentiment]) => {
+    // 옵션분석 요약 생성
+    const optionSummary = optionAnalysisResults.size > 0
+      ? `\n🚗 차량 옵션 분석 요약:\n${Array.from(optionAnalysisResults.entries()).map(([key, analysis]) => {
           const [manufacturer, model] = key.split('_');
-          return `- ${manufacturer} ${model}: ${sentiment.overallSentiment} (${sentiment.sentimentScore}점, ${sentiment.reviewCount}개 리뷰)`;
+          return `- ${manufacturer} ${model}: 옵션가치 ${analysis.totalOptionValue}점 (${analysis.recommendation}), 하이라이트: ${analysis.optionHighlights.length}개`;
         }).join('\n')}\n`
       : '';
 
@@ -163,7 +174,7 @@ export class VehicleReranker {
 - 주요 고민: ${persona.realConcerns.slice(0, 3).join(', ')}
 
 🚗 분석 대상 차량:
-${vehicleList}${sentimentSummary}
+${vehicleList}${optionSummary}
 
 🎯 사용자 요청: "${userContext}"
 
@@ -182,15 +193,22 @@ ${vehicleList}${sentimentSummary}
 
 평가 기준:
 1. 페르소나 우선순위 부합도 (35%)
-2. 예산 대비 가성비 (25%)
-3. 리뷰 감성분석 점수 반영 (20%)
+2. 차량 옵션 가치 분석 (25%)
+3. 예산 대비 가성비 (20%)
 4. 실제 고민 해결 정도 (15%)
 5. 상황적 적합성 (5%)
 
-💡 리뷰 감성분석 활용 가이드:
-- 감성점수가 높을수록 실제 사용자 만족도가 높음
-- 리뷰 개수가 많을수록 신뢰도 증가
-- 부정적 감성(negative)인 경우 점수 차감 고려
+🚗 차량 옵션 분석 활용 가이드:
+- 옵션가치 점수(0-100): 페르소나 맞춤 옵션 보유 정도
+- EXCELLENT(85+): 페르소나에 최적화된 옵션 구성 (높은 점수)
+- GOOD(70-84): 적절한 옵션 보유 (중간 점수)
+- AVERAGE(50-69): 기본적 옵션만 보유 (기본 점수)
+- POOR(50미만): 중요 옵션 부족 (낮은 점수)
+
+💡 실제 통계 데이터 활용:
+- 실제 RDS 170,398대 매물 데이터 기반 옵션 인기도
+- 타이어 공기압센서(99.6%), 에어백(사이드)(98.8%) 등 실제 보급률
+- CEO 페르소나 특화 옵션 가중치 적용
 
 점수 범위: 0-100점 (80점 이상: 강력 추천, 60-79점: 추천, 40-59점: 보통, 40점 미만: 비추천)
 
@@ -203,10 +221,10 @@ ${vehicleList}${sentimentSummary}
       // JSON 파싱 및 결과 매핑
       const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
 
-      // 빈 응답 검사
+      // 빈 응답 검사 - 폴백으로 처리
       if (!cleanedResponse || cleanedResponse.length < 10) {
         console.warn('⚠️ LLM 응답이 비어있음, 폴백 처리');
-        throw new Error('빈 LLM 응답');
+        return this.generateBatchFallback(vehicles);
       }
 
       const parsed = JSON.parse(cleanedResponse);
@@ -219,6 +237,10 @@ ${vehicleList}${sentimentSummary}
           throw new Error(`Invalid vehicle index: ${ranking.vehicleIndex}`);
         }
 
+        // 옵션 분석 결과 포함
+        const key = `${vehicle.manufacturer}_${vehicle.model}_${vehicle.modelyear}`;
+        const optionAnalysis = optionAnalysisResults.get(key);
+
         return {
           vehicle,
           score: Math.max(0, Math.min(100, ranking.score)), // 0-100 범위 보장
@@ -227,7 +249,15 @@ ${vehicleList}${sentimentSummary}
             `🚗 ${vehicle.manufacturer} ${vehicle.model} ${vehicle.modelyear}년식`,
             `💰 ${vehicle.price?.toLocaleString()}만원 (예산 내)`,
             `⛽ ${vehicle.fueltype} ${vehicle.cartype}`
-          ]
+          ],
+          optionAnalysis: optionAnalysis ? {
+            totalOptionValue: optionAnalysis.totalOptionValue,
+            optionHighlights: optionAnalysis.optionHighlights,
+            missingCriticalOptions: optionAnalysis.missingCriticalOptions,
+            personaFitScore: optionAnalysis.personaFitScore,
+            recommendation: optionAnalysis.recommendation,
+            valueJustification: optionAnalysis.valueJustification
+          } : undefined
         };
       });
 
@@ -335,6 +365,37 @@ ${vehicleList}${sentimentSummary}
           `💰 예산 적합도: ${budgetScore}점`,
           `🏷️ 브랜드 적합도: ${brandScore}점`,
           `📅 연식: ${vehicle.modelyear}년 (${yearScore}점)`
+        ]
+      };
+    }).sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * 배치 폴백 생성 (LLM 응답 실패시)
+   */
+  private generateBatchFallback(vehicles: VehicleForRanking[]): RerankingResult[] {
+    // 임시 페르소나 사용 (기본값)
+    const defaultPersona = {
+      name: 'Default',
+      budget: { min: 1000, max: 8000 },
+      priorities: []
+    } as PersonaProfile;
+
+    console.log(`🔄 배치 폴백 생성: ${vehicles.length}대 처리`);
+
+    return vehicles.map((vehicle, index) => {
+      const baseScore = 50 + (Math.random() * 30); // 50-80 기본 점수
+      const yearBonus = Math.max(0, (vehicle.modelyear - 2015) * 2);
+      const finalScore = Math.min(100, Math.round(baseScore + yearBonus));
+
+      return {
+        vehicle,
+        score: finalScore,
+        reasoning: `폴백 분석으로 ${vehicle.manufacturer} ${vehicle.model}을 추천합니다.`,
+        personalizedInsights: [
+          `📊 기본 점수: ${Math.round(baseScore)}점`,
+          `📅 연식 보너스: ${yearBonus}점`,
+          `🔄 폴백 모드 적용`
         ]
       };
     }).sort((a, b) => b.score - a.score);

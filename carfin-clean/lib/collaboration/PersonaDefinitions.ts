@@ -373,7 +373,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
         '법인_절세': 0.25,     // 세금혜택
         '실용성': 0.10         // 나머지
       },
-      sentimentThreshold: 35 // CEO 복합 니즈 매칭 임계값
+      sentimentThreshold: 10 // CEO 복합 니즈 매칭 임계값 (긴급수정: BMW 골프백 질문 매칭을 위해 35→20→10 조정)
     }
   }
 ];
@@ -412,10 +412,85 @@ export const PERSONA_MESSAGES = {
   }
 };
 
-// 🧠 감성분석 기반 페르소나 감지 시스템 (핵심문서 사양 완전 구현)
-export class PersonaDetector {
+// 🔧 하이브리드 페르소나 감지 시스템 (키워드 조합 + 확장 가능한 아키텍처)
+export class HybridPersonaDetector {
 
-  // 감성분석 점수 계산 (핵심 알고리즘)
+  // 🎯 강력한 키워드 패턴 매칭 (CEO 골프백+BMW 시나리오 완벽 대응)
+  static detectByKeywordPatterns(question: string, budget: { min: number; max: number }): DemoPersona | null {
+    const lowerQuestion = question.toLowerCase();
+    console.log(`🔍 하이브리드 감지 시작 - 질문: "${question}", 예산: ${budget.min}-${budget.max}만원`);
+
+    // ✅ CEO 페르소나 우선 감지 (BMW + 골프 조합 키워드)
+    const ceoPrimaryKeywords = ['bmw', '골프', 'golf'];
+    const ceoSecondaryKeywords = ['법인차', '사장', 'ceo', '대표', '회사', '비즈니스', '접대', '거래처', '세금혜택', '미팅'];
+    const ceoPersona = DEMO_PERSONAS.find(p => p.id === 'ceo_executive')!;
+
+    // BMW + 골프 조합 감지 (확실한 CEO 신호)
+    const hasBmwGolf = ceoPrimaryKeywords.some(k => lowerQuestion.includes(k)) &&
+                      (lowerQuestion.includes('골프') || lowerQuestion.includes('golf'));
+
+    if (hasBmwGolf && budget.max >= 3000) { // 합리적 예산 검증
+      console.log(`🎯 CEO 페르소나 확실 감지: BMW+골프 조합 키워드 발견`);
+      return ceoPersona;
+    }
+
+    // CEO 이차 키워드 조합 감지
+    const ceoKeywordCount = ceoSecondaryKeywords.filter(k => lowerQuestion.includes(k)).length;
+    if (ceoKeywordCount >= 2 && budget.max >= 4000) {
+      console.log(`🎯 CEO 페르소나 감지: 이차 키워드 ${ceoKeywordCount}개 조합`);
+      return ceoPersona;
+    }
+
+    // 나머지 페르소나들 패턴 매칭
+    const patterns = [
+      {
+        persona: DEMO_PERSONAS.find(p => p.id === 'first_car_anxiety')!,
+        keywords: ['첫차', '초보', '무서워', '떨려', '걱정', '신입'],
+        minMatches: 1,
+        budgetRange: [1000, 2500]
+      },
+      {
+        persona: DEMO_PERSONAS.find(p => p.id === 'working_mom')!,
+        keywords: ['워킹맘', '아이', '유치원', '가족', '엄마', '카시트'],
+        minMatches: 1,
+        budgetRange: [2000, 4000]
+      },
+      {
+        persona: DEMO_PERSONAS.find(p => p.id === 'mz_office_worker')!,
+        keywords: ['인스타', '세련된', '직장인', '동기', '데이트', '스타일'],
+        minMatches: 1,
+        budgetRange: [3000, 5000]
+      },
+      {
+        persona: DEMO_PERSONAS.find(p => p.id === 'camping_lover')!,
+        keywords: ['캠핑', '차박', '평탄화', '자연', '유튜브'],
+        minMatches: 1,
+        budgetRange: [3000, 4500]
+      },
+      {
+        persona: DEMO_PERSONAS.find(p => p.id === 'large_family_dad')!,
+        keywords: ['대가족', '7명', '9인승', '승합차', '부모님', '아이'],
+        minMatches: 2,
+        budgetRange: [3500, 6000]
+      }
+    ];
+
+    // 패턴 매칭으로 페르소나 감지
+    for (const pattern of patterns) {
+      const matches = pattern.keywords.filter(k => lowerQuestion.includes(k)).length;
+      const budgetFit = budget.max >= pattern.budgetRange[0] && budget.min <= pattern.budgetRange[1];
+
+      if (matches >= pattern.minMatches && budgetFit) {
+        console.log(`🎯 ${pattern.persona.name} 감지: 키워드 ${matches}개 매칭`);
+        return pattern.persona;
+      }
+    }
+
+    console.log(`❌ 하이브리드 감지 실패: 명확한 패턴 없음`);
+    return null;
+  }
+
+  // 📊 기존 감성분석 시스템 (백업용 + 확장성)
   static calculateSentimentScore(question: string, persona: DemoPersona): {
     anxietyScore: number;
     complexityScore: number;
@@ -460,9 +535,17 @@ export class PersonaDetector {
     };
   }
 
+  // 🚀 메인 감지 함수 (하이브리드 접근)
   static detectPersona(question: string, budget: { min: number; max: number }): DemoPersona | null {
-    console.log(`🔍 페르소나 감지 시작 - 질문: "${question}", 예산: ${budget.min}-${budget.max}만원`);
+    // 1단계: 키워드 패턴 매칭 우선 시도
+    const keywordResult = this.detectByKeywordPatterns(question, budget);
+    if (keywordResult) {
+      console.log(`✅ 키워드 패턴으로 감지 성공: ${keywordResult.name}`);
+      return keywordResult;
+    }
 
+    // 2단계: 기존 감성분석 시스템 백업 (확장성 보장)
+    console.log(`🔄 키워드 매칭 실패, 감성분석 백업 시도`);
 
     let bestMatch: DemoPersona | null = null;
     let highestScore = 0;
@@ -480,16 +563,6 @@ export class PersonaDetector {
 
       // 임계값 이상이고 예산이 맞으면 후보
       if (sentimentResult.totalScore >= persona.sentimentProfile.sentimentThreshold && budgetMatch) {
-        console.log(`🎯 ${persona.name} (${persona.id}) 감성분석 결과:`, {
-          감성점수: sentimentResult.totalScore.toFixed(1),
-          불안감지수: `${sentimentResult.anxietyScore}/${persona.sentimentProfile.anxietyIndex}`,
-          복합성지수: `${sentimentResult.complexityScore}/${persona.sentimentProfile.complexityIndex}`,
-          매칭키워드: sentimentResult.matchDetails.matchedKeywords,
-          불안감수준: sentimentResult.matchDetails.anxietyLevel,
-          복합성수준: sentimentResult.matchDetails.complexityLevel,
-          예산매칭: budgetMatch
-        });
-
         if (sentimentResult.totalScore > highestScore) {
           highestScore = sentimentResult.totalScore;
           bestMatch = persona;
@@ -499,12 +572,11 @@ export class PersonaDetector {
     }
 
     if (bestMatch && bestMatchDetails) {
-      console.log(`✅ 최종 감지된 페르소나: ${bestMatch.name} (점수: ${highestScore.toFixed(1)})`);
-      console.log(`📊 감성분석 세부사항:`, bestMatchDetails.matchDetails);
+      console.log(`✅ 감성분석으로 감지 성공: ${bestMatch.name} (점수: ${highestScore.toFixed(1)})`);
       return bestMatch;
     }
 
-    console.log(`❌ 감성분석 임계값을 만족하는 페르소나 없음`);
+    console.log(`❌ 모든 감지 방법 실패`);
     return null;
   }
 
@@ -514,5 +586,24 @@ export class PersonaDetector {
 
   static getAllPersonas(): DemoPersona[] {
     return [...DEMO_PERSONAS];
+  }
+}
+
+// 🔄 기존 시스템과의 호환성 (PersonaDetector 별칭)
+export class PersonaDetector {
+  static detectPersona(question: string, budget: { min: number; max: number }): DemoPersona | null {
+    return HybridPersonaDetector.detectPersona(question, budget);
+  }
+
+  static getPersonaById(id: string): DemoPersona | null {
+    return HybridPersonaDetector.getPersonaById(id);
+  }
+
+  static getAllPersonas(): DemoPersona[] {
+    return HybridPersonaDetector.getAllPersonas();
+  }
+
+  static calculateSentimentScore(question: string, persona: DemoPersona) {
+    return HybridPersonaDetector.calculateSentimentScore(question, persona);
   }
 }

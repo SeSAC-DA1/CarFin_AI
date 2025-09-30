@@ -164,10 +164,10 @@ ${personaId ? `🎭 분석 관점: ${this.getPersonaReviewFocus(personaId)}` : '
     try {
       const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
 
-      // 빈 응답 검사
+      // 빈 응답 검사 - 폴백으로 처리
       if (!cleanedResponse || cleanedResponse.length < 10) {
-        console.warn('⚠️ 감성분석 LLM 응답이 비어있음, 폴백 처리');
-        throw new Error('빈 감성분석 LLM 응답');
+        console.warn('⚠️ 감성분석 LLM 응답이 비어있음, 폴백 생성');
+        return this.generateBatchFallback(vehicles);
       }
 
       const parsed = JSON.parse(cleanedResponse);
@@ -319,6 +319,21 @@ ${personaId ? `🎭 분석 관점: ${this.getPersonaReviewFocus(personaId)}` : '
       reviewCount: 3,
       confidenceLevel: 'low'
     };
+  }
+
+  /**
+   * 배치 폴백 생성 (LLM 응답 실패시)
+   */
+  private generateBatchFallback(vehicles: any[]): Map<string, SentimentAnalysisResult> {
+    const results = new Map<string, SentimentAnalysisResult>();
+
+    vehicles.forEach(vehicle => {
+      const key = `${vehicle.manufacturer}_${vehicle.model}_${vehicle.modelyear}`;
+      results.set(key, this.generateFallbackSentiment(vehicle));
+    });
+
+    console.log(`🔄 배치 폴백 생성: ${vehicles.length}대 처리`);
+    return results;
   }
 
   /**
