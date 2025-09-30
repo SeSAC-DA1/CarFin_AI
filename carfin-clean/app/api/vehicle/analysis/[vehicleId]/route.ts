@@ -6,11 +6,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ vehicleId: string }> }
 ) {
-  const resolvedParams = await params;
-  console.log(`🔍 실제 차량 분석 요청: ${resolvedParams.vehicleId}`);
-
   try {
+    const resolvedParams = await params;
     const vehicleId = resolvedParams.vehicleId;
+    console.log(`🔍 실제 차량 분석 요청: ${vehicleId}`);
 
     console.log(`🔍 실제 차량 분석 시작: ${vehicleId}`);
 
