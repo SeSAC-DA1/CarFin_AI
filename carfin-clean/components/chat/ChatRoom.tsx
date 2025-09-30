@@ -684,7 +684,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
   const getAgentInfo = (agent: Message['agent']) => {
     switch (agent) {
       case 'user':
-        return { name: '나', color: 'bg-blue-500', emoji: '👤' };
+        return { name: '고객님', color: 'bg-blue-500', emoji: '👤' };
       case 'concierge':
         return { name: '컨시어지 매니저', color: 'bg-blue-600', emoji: '🎯' };
       case 'needs_analyst':
