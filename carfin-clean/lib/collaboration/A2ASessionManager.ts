@@ -219,7 +219,7 @@ export class A2ASessionManager {
    * 세션 분석 데이터 생성
    */
   private generateSessionAnalytics(session: A2ASession, completionType: string) {
-    const sessionDuration = new Date().getTime() - session.startTime.getTime();
+    const sessionDuration = new Date().getTime() - new Date(session.startTime).getTime();
 
     return {
       sessionId: session.sessionId,

@@ -975,31 +975,18 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
             </div>
           )}
 
-          {/* 기다리는 동안 팁 */}
-          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-100">
-            <div className="text-center">
-              <div className="text-2xl mb-2">💡</div>
-              <h4 className="font-medium text-orange-800 mb-2">잠깐! 알고 계셨나요?</h4>
-              <p className="text-sm text-orange-700 leading-relaxed">
-                중고차 구매시 가장 중요한 건 숨겨진 비용까지
-                꼼꼼히 따져보는 거예요. 저희가 다 계산해드릴게요!
-              </p>
-            </div>
-          </div>
-
-          {/* 격려 메시지 */}
-          <div className="bg-white rounded-lg p-4 border border-green-100">
-            <div className="flex items-start space-x-3">
-              <div className="text-2xl">💝</div>
-              <div>
-                <h4 className="font-medium text-green-800 mb-1">CarFin 약속</h4>
-                <p className="text-sm text-green-700 leading-relaxed">
-                  딜러 영업 없이 100% 중립적으로
-                  당신 편에서 도와드려요
+          {/* 간단한 시스템 상태 */}
+          {dbStats.totalVehicles > 0 && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+              <div className="text-center">
+                <div className="text-2xl mb-2">🚀</div>
+                <h4 className="font-medium text-blue-800 mb-2">실시간 연결</h4>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  {dbStats.totalVehicles.toLocaleString()}대 실제 매물과 연결됨
                 </p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -1023,7 +1010,8 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-6 space-y-6 bg-white pb-24"
+          className="flex-1 overflow-y-auto p-6 space-y-6 bg-white pb-32"
+          style={{ maxHeight: 'calc(100vh - 200px)' }}
         >
           {/* N번째 질문 환경 배너 */}
           {welcomeSystemInitialized && (
@@ -1271,8 +1259,8 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 입력 영역 */}
-        <div className="bg-white border-t border-gray-200 p-4">
+        {/* 입력 영역 - 고정 위치 */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-20">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-end space-x-3">
               <div className="flex-1">
