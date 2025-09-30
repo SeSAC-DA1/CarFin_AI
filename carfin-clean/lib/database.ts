@@ -477,13 +477,7 @@ function getDemoVehicles(budget: {min: number, max: number}, usage?: string, fam
 // 데이터베이스 상태 확인 (🚀 성능 최적화: 9초 → 1초)
 export async function getDatabaseStatus() {
   try {
-    // 🚀 PERFORMANCE BOOST: 캐시 확인 (5분 TTL)
-    const cacheKey = 'database_status';
-    const cachedStatus = await redis.getCachedData(cacheKey);
-    if (cachedStatus) {
-      console.log('⚡ DB 상태 캐시 히트 - 즉시 응답!');
-      return { ...cachedStatus, currentTime: new Date() };
-    }
+    // 실제 RDS 데이터베이스에서 항상 최신 데이터 조회 (캐시 비활성화)
 
     // 실제 RDS 데이터베이스 연결 확인
     if (!process.env.DB_HOST) {
@@ -510,9 +504,8 @@ export async function getDatabaseStatus() {
       sellTypes: sellTypeResult.rows
     };
 
-    // 🚀 PERFORMANCE BOOST: 캐시 저장 (5분 TTL)
-    await redis.cacheData(cacheKey, status, 300);
-    console.log(`💾 DB 상태 캐시 저장: 다음 5분간 즉시 응답`);
+    // 캐시 저장 비활성화 - 항상 실제 RDS 데이터 제공
+    console.log(`✅ RDS 실제 데이터 조회 완료: ${status.totalVehicles}대`);
 
     return status;
   } catch (error) {
