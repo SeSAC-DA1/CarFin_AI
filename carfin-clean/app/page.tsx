@@ -122,17 +122,17 @@ export default function Home() {
         {/* 메인 헤더 */}
         <div className="text-center mb-16">
           <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            <span className="text-blue-600">니 취향만 말해,</span>
+            <span className="text-blue-600">고객님의 니즈만 말씀해주세요,</span>
             <br />
             <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-              나머지는 내가 다 해줄게
+              나머지는 AI 전문가팀이 해결합니다
             </span>
           </h1>
 
           <p className="text-xl text-gray-600 mb-4 max-w-3xl mx-auto leading-relaxed">
-            중고차 선택이 어렵나요? 😅 3명의 AI 전문가가 당신 대신 고민해드려요!
+            중고차 선택이 복잡하신가요? 3명의 AI 전문가가 CEO부터 신혼부부까지 맞춤 분석해드립니다!
             <br />
-            복잡한 비교는 그만, <strong>하고 싶은 말만 편하게 해주세요.</strong>
+            복잡한 비교는 그만, <strong>170K+ 실제 매물에서 최적의 선택을 찾아드려요.</strong>
           </p>
 
           {/* N번째 질문 환영 핵심 메시지 */}
@@ -204,10 +204,10 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                무엇을 도와드릴까요? 😊
+                차량 구매 고민을 말씀해주세요 😊
               </h2>
               <p className="text-gray-600">
-                마치 친구에게 말하듯 편하게 얘기해주세요. 사소한 걱정도 다 들어드려요!
+                CEO, 신혼부부, 첫차 구매자까지 - 상황별 맞춤 분석을 위해 자세히 말씀해주세요!
               </p>
             </div>
 
@@ -217,7 +217,7 @@ export default function Home() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder='예: "첫차 사는데 너무 무서워요... 뭘 살지 모르겠어요 ㅠㅠ"'
+                placeholder='예: "골프백 들어가는 BMW 차량 추천해주세요" (CEO 데모용)'
                 className="flex-1 text-lg px-6 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 disabled={isLoading}
                 aria-label="차량 구매 상담 내용 입력"
@@ -253,7 +253,7 @@ export default function Home() {
                     🎭 6개 페르소나별 A2A 시연 보기
                   </button>
                   <p className="text-sm text-gray-600 mb-4">
-                    다양한 고객 유형별로 어떻게 다른 A2A 협업이 이루어지는지 확인해보세요
+                    CEO, 신혼부부, 첫차 구매자 등 페르소나별 맞춤 A2A 협업 시연을 확인해보세요
                   </p>
 
                 </div>
@@ -298,8 +298,8 @@ export default function Home() {
                 <p className="text-blue-600 text-sm">전체 상담 프로세스 체계적 관리</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                "걱정마세요! 저는 <span className="font-bold text-blue-700">{dbStatus.totalVehicles.toLocaleString()}대</span>의 중고차 정보를 다 기억하고 있어요.
-                당신만을 위한 완벽한 차량을 찾을 때까지 함께 해드릴게요 😊"
+                "안녕하세요! 저는 <span className="font-bold text-blue-700">{dbStatus.totalVehicles.toLocaleString()}대</span>의 실제 매물 정보를 실시간으로 관리하고 있습니다.
+                CEO부터 첫차 구매자까지 맞춤 상담을 제공해드리겠습니다 😊"
               </p>
             </div>
 
@@ -311,8 +311,8 @@ export default function Home() {
                 <p className="text-orange-600 text-sm">CarFin AI 핵심 - 숨은 니즈 완벽 발굴</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                "말씀하신 것 외에도 숨어있는 니즈가 있을 거예요!
-                당신의 진짜 라이프스타일을 파악해서 100% 만족할 차량을 찾아드릴게요 🔍"
+                "고객님의 명시적 요구사항 외에도 숨겨진 니즈를 발굴합니다!
+                라이프스타일과 업무 특성을 종합 분석하여 최적의 차량을 추천해드리겠습니다 🔍"
               </p>
             </div>
 
@@ -324,8 +324,8 @@ export default function Home() {
                 <p className="text-green-600 text-sm">{dbStatus.totalVehicles.toLocaleString()}+ 매물 + TCO + 금융 분석 올인원</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
-                "모든 비용을 투명하게 계산해드려요! 보험료, 유지비까지 다 따져서
-                진짜 가성비 좋은 '숨은 보석' 매물만 골라드릴게요 💎"
+                "TCO(총소유비용) 분석을 통해 모든 비용을 투명하게 계산합니다!
+                보험료, 유지비까지 포함하여 진정한 가성비 차량을 찾아드리겠습니다 💎"
               </p>
             </div>
           </div>
@@ -334,13 +334,13 @@ export default function Home() {
         {/* 하단 신뢰성 메시지 */}
         <div className="text-center mt-16 py-8 border-t border-gray-200">
           <p className="text-gray-600 text-lg">
-            💝 <strong>딜러 영업 없이 100% 중립적</strong>으로 당신 편에서 도와드려요
+            💝 <strong>딜러 영업 없이 100% 중립적</strong>으로 고객님 편에서 분석해드립니다
           </p>
           <p className="text-gray-500 mt-2">
-            걱정 끝! 완전 무료로 끝까지 함께 해드립니다 😊
+            CEO부터 신혼부부까지 맞춤 분석 • 완전 무료로 지원해드립니다 😊
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            Gemini 2.5 Flash + A2A Protocol • 검증된 실제 데이터만 사용
+            Gemini 2.5 Flash + A2A Protocol • 170K+ 실제 매물 데이터 기반
           </p>
         </div>
       </div>

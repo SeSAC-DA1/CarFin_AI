@@ -772,7 +772,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
             </button>
             <div className="flex-1">
               <h2 className="text-lg font-bold text-gray-900">CarFin AI</h2>
-              <p className="text-sm text-gray-500">전문가팀 상담</p>
+              <p className="text-sm text-gray-700">전문가팀 상담</p>
             </div>
             <button
               onClick={clearConversationHistory}
@@ -805,8 +805,8 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                 <div className="text-3xl mb-2">😊</div>
                 <h3 className="font-bold text-slate-800 mb-2">걱정 끝!</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  3명의 전문가가 {selectedPersona?.name || '고객님'}만을 위해
-                  최고의 차량을 찾고 있어요
+                  A2A 협업 시스템으로 {selectedPersona?.name || '고객님'}만을 위한
+                  최적의 차량을 분석하고 있습니다
                 </p>
               </div>
             </div>
@@ -820,21 +820,21 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                 <span className="text-xs text-blue-600">데이터 조회</span>
                 <div className="flex items-center space-x-1">
                   <div className={`w-2 h-2 rounded-full ${analysisStatus.dataSearch === 'completed' ? 'bg-green-400' : analysisStatus.dataSearch === 'in_progress' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
-                  <span className="text-xs font-mono text-gray-600">{dbStats.totalVehicles.toLocaleString()}대</span>
+                  <span className="text-xs font-mono text-gray-800">{dbStats.totalVehicles.toLocaleString()}대</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-blue-600">AI 협업</span>
                 <div className="flex items-center space-x-1">
                   <div className={`w-2 h-2 rounded-full ${analysisStatus.collaboration === 'completed' ? 'bg-green-400' : analysisStatus.collaboration === 'in_progress' ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
-                  <span className="text-xs text-gray-600">{currentSessionId ? 'A2A' : '대기'}</span>
+                  <span className="text-xs text-gray-800">{currentSessionId ? 'A2A' : '대기'}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-blue-600">랭킹 분석</span>
                 <div className="flex items-center space-x-1">
                   <div className={`w-2 h-2 rounded-full ${lastVehicleRecommendations.length > 0 ? 'bg-green-400' : isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-gray-300'}`}></div>
-                  <span className="text-xs font-mono text-gray-600">{lastVehicleRecommendations.length > 0 ? `${lastVehicleRecommendations.length}대` : '대기'}</span>
+                  <span className="text-xs font-mono text-gray-800">{lastVehicleRecommendations.length > 0 ? `${lastVehicleRecommendations.length}대` : '대기'}</span>
                 </div>
               </div>
             </div>
@@ -847,15 +847,15 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
               <div className="text-center space-y-3">
                 <div>
                   <div className="text-lg font-bold text-amber-700">4,500~7,000만원</div>
-                  <div className="text-xs text-gray-600">프리미엄 예산대</div>
+                  <div className="text-xs text-gray-700">프리미엄 예산대</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-green-700">골프백 수납</div>
-                  <div className="text-xs text-gray-600">비즈니스 특화</div>
+                  <div className="text-xs text-gray-700">비즈니스 특화</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-purple-700">법인차 절세</div>
-                  <div className="text-xs text-gray-600">세금 혜택 가능</div>
+                  <div className="text-xs text-gray-700">세금 혜택 가능</div>
                 </div>
               </div>
             </div>
@@ -865,15 +865,15 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
               <div className="text-center space-y-3">
                 <div>
                   <div className="text-lg font-bold text-green-700">{dbStats.totalVehicles > 0 ? dbStats.totalVehicles.toLocaleString() : '117,564'}+</div>
-                  <div className="text-xs text-gray-600">실제 매물에서 검색</div>
+                  <div className="text-xs text-gray-700">실제 매물에서 검색</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-700">100%</div>
-                  <div className="text-xs text-gray-600">무료 상담</div>
+                  <div className="text-xs text-gray-700">무료 상담</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-purple-700">0%</div>
-                  <div className="text-xs text-gray-600">딜러 영업</div>
+                  <div className="text-xs text-gray-700">딜러 영업</div>
                 </div>
               </div>
             </div>
@@ -888,7 +888,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                 </div>
                 <div className="text-xs text-indigo-600">N번째 질문 환영 시스템</div>
                 {currentSessionId && (
-                  <div className="text-xs text-gray-500 font-mono bg-white/50 rounded px-2 py-1 mt-2">
+                  <div className="text-xs text-gray-700 font-mono bg-white/50 rounded px-2 py-1 mt-2">
                     {currentSessionId.slice(-8)}
                   </div>
                 )}
@@ -936,17 +936,17 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                           <div className={`text-sm font-bold ${rankConfig.text}`}>
                             {vehicle.reranking_score || 90}점
                           </div>
-                          <div className="text-xs text-gray-600">적합도</div>
+                          <div className="text-xs text-gray-700">적합도</div>
                         </div>
                       </div>
                       <div className="text-sm font-bold text-gray-900 mb-1 leading-tight">
                         {vehicle.manufacturer} {vehicle.model}
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-600">
+                      <div className="flex items-center justify-between text-xs text-gray-700">
                         <span>{vehicle.modelyear}년식</span>
                         <span className="font-medium text-blue-700">{vehicle.price?.toLocaleString()}만원</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                      <div className="flex items-center justify-between text-xs text-gray-700 mt-1">
                         <span>{vehicle.distance?.toLocaleString()}km</span>
                         <span>{vehicle.location}</span>
                       </div>
@@ -996,8 +996,8 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
         <div className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">AI 전문가팀과의 상담</h1>
-              <p className="text-sm text-gray-600">3명의 전문가가 협업하여 분석해드립니다</p>
+              <h1 className="text-xl font-bold text-gray-900">CarFin AI 전문가팀 상담</h1>
+              <p className="text-sm text-gray-800">CEO부터 신혼부부까지 맞춤 A2A 협업 분석</p>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -1062,7 +1062,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                 </>
               )}
             </button>
-            <div className="text-xs text-gray-500 mt-2">
+            <div className="text-xs text-gray-800 mt-2">
               {showThinkingProcess
                 ? "분석 과정이 숨겨집니다"
                 : "3명의 전문가가 어떻게 도와주는지 확인해보세요! 😊"}
@@ -1088,7 +1088,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                   </>
                 )}
               </button>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-800 mt-1">
                 {showThinkingProcess
                   ? "💡 결론만 보고 싶다면 접기를 누르세요"
                   : "🤔 3명의 AI 전문가가 어떻게 생각하는지 궁금하다면?"}
@@ -1117,7 +1117,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                     {!isUser && (
                       <div className="flex items-center space-x-2 mb-1">
                         <span className="font-medium text-gray-900 text-sm">{agentInfo.name}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-700">
                           {message.timestamp.toLocaleTimeString('ko-KR', {
                             hour: '2-digit',
                             minute: '2-digit'
@@ -1134,7 +1134,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                     }`}>
                       {/* 메시지 타입별 특별 표시 */}
                       {message.messageType && !isUser && (
-                        <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
+                        <div className="text-xs text-gray-800 mb-2 uppercase tracking-wide font-medium">
                           {message.messageType === 'pattern_detected' && '🎯 상황 분석 완료'}
                           {message.messageType === 'question' && '❓ 전문가 질문'}
                           {message.messageType === 'answer' && '💬 전문가 답변'}
@@ -1169,7 +1169,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                       )}
                       {/* 메타데이터 표시 */}
                       {message.metadata?.targetAgent && (
-                        <div className="text-xs text-gray-500 mt-2">
+                        <div className="text-xs text-gray-800 mt-2">
                           → {message.metadata.targetAgent}에게 질문
                         </div>
                       )}
@@ -1244,9 +1244,9 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
                         <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
-                      <span className="text-sm text-gray-600 font-medium">{loadingMessages.main}</span>
+                      <span className="text-sm text-gray-800 font-medium">{loadingMessages.main}</span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-700">
                       {loadingMessages.sub}
                     </div>
                   </div>
@@ -1422,7 +1422,7 @@ function AgentMessageWithToggle({
 
       {/* 상세 내용 */}
       {hasDetails && isExpanded && (
-        <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-200">
+        <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-200">
           <span>{details}</span>
         </div>
       )}
