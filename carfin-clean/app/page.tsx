@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Send, Database, CheckCircle } from 'lucide-react';
-import SimpleChatRoom from '@/components/chat/SimpleChatRoom';
+import ChatRoom from '@/components/chat/ChatRoom';
 import PersonaDemoSelector from '@/components/demo/PersonaDemoSelector';
 import A2AVisualization from '@/components/ui/A2AVisualization';
 import { DemoPersona } from '@/lib/collaboration/PersonaDefinitions';
@@ -76,7 +76,7 @@ export default function Home() {
 
   if (showChatRoom) {
     return (
-      <SimpleChatRoom
+      <ChatRoom
         initialQuestion={initialQuestion}
         onBack={handleBack}
         selectedPersona={selectedPersona}
