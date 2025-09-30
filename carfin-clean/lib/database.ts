@@ -27,9 +27,9 @@ export async function getClient() {
 // 차량 검색 함수 - 페르소나별 동적 검색
 export async function searchVehicles(budget: {min: number, max: number}, usage?: string, familyType?: string, persona?: any, includeLease: boolean = false) {
   try {
-    // 데모 모드이거나 DB 연결이 없으면 가짜 데이터 반환
-    if (process.env.DEMO_MODE === 'true' || !process.env.DB_HOST) {
-      return getDemoVehicles(budget, usage, familyType);
+    // 실제 RDS 데이터베이스 연결 확인
+    if (!process.env.DB_HOST) {
+      throw new Error('DB_HOST 환경변수가 설정되지 않았습니다. RDS 연결 필요.');
     }
 
     // 🚀 PERFORMANCE BOOST: 발키 캐싱 활성화 (18배 성능 향상)
@@ -485,21 +485,9 @@ export async function getDatabaseStatus() {
       return { ...cachedStatus, currentTime: new Date() };
     }
 
-    // 데모 모드이거나 DB 연결이 없으면 데모 상태 반환
-    if (process.env.DEMO_MODE === 'true' || !process.env.DB_HOST) {
-      const demoStatus = {
-        isConnected: true,
-        totalVehicles: 50000,
-        availableVehicles: 45000,
-        currentTime: new Date(),
-        mode: 'demo',
-        sellTypes: [
-          { selltype: '판매', count: 40000 },
-          { selltype: '리스', count: 5000 }
-        ]
-      };
-      await redis.cacheData(cacheKey, demoStatus, 300); // 5분 캐시
-      return demoStatus;
+    // 실제 RDS 데이터베이스 연결 확인
+    if (!process.env.DB_HOST) {
+      throw new Error('DB_HOST 환경변수가 설정되지 않았습니다. RDS 연결 필요.');
     }
 
     // 🚀 PERFORMANCE BOOST: 병렬 쿼리 실행 (4배 빠름)
