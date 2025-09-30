@@ -516,27 +516,7 @@ export async function getDatabaseStatus() {
 
     return status;
   } catch (error) {
-    console.error('데이터베이스 상태 확인 오류:', error);
-    // DB 에러 시 데모 상태 반환
-    const fallbackStatus = {
-      isConnected: true,
-      totalVehicles: 50000,
-      availableVehicles: 45000,
-      currentTime: new Date(),
-      mode: 'demo',
-      sellTypes: [
-        { selltype: '판매', count: 40000 },
-        { selltype: '리스', count: 5000 }
-      ]
-    };
-
-    // 에러 상황에서도 짧은 캐시 적용 (1분)
-    try {
-      await redis.cacheData('database_status', fallbackStatus, 60);
-    } catch (cacheError) {
-      console.warn('캐시 저장 실패:', cacheError);
-    }
-
-    return fallbackStatus;
+    console.error('❌ RDS 데이터베이스 연결 실패:', error);
+    throw new Error(`RDS 데이터베이스 연결 실패: ${error.message}. 실제 데이터베이스 연결이 필요합니다.`);
   }
 }
