@@ -290,12 +290,12 @@ export default function Home() {
           </h3>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {/* 컨시어지 매니저 */}
+            {/* CarFin 상담 총괄 에이전트 */}
             <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">🎯</div>
-                <h4 className="text-xl font-bold text-blue-800">컨시어지 매니저</h4>
-                <p className="text-blue-600 text-sm">A2A 협업 총괄 및 전체 상담 프로세스 관리</p>
+                <h4 className="text-xl font-bold text-blue-800">CarFin 상담 총괄 에이전트</h4>
+                <p className="text-blue-600 text-sm">A2A 협업 총괄 및 맞춤 상담 프로세스 관리</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
                 "안녕하세요! 저는 <span className="font-bold text-blue-700">{dbStatus.totalVehicles.toLocaleString()}대</span>의 실제 매물 정보를 실시간으로 관리하고 있습니다.
@@ -303,11 +303,11 @@ export default function Home() {
               </p>
             </div>
 
-            {/* 니즈 분석 전문가 */}
+            {/* CarFin 니즈 분석 에이전트 */}
             <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">🔍</div>
-                <h4 className="text-xl font-bold text-orange-800">니즈 분석 전문가</h4>
+                <h4 className="text-xl font-bold text-orange-800">CarFin 니즈 분석 에이전트</h4>
                 <p className="text-orange-600 text-sm">페르소나 감지 및 숨은 니즈 완벽 발굴</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
@@ -316,12 +316,12 @@ export default function Home() {
               </p>
             </div>
 
-            {/* 데이터 분석 전문가 */}
+            {/* CarFin 차량 추천 에이전트 */}
             <div className="bg-green-50 rounded-xl p-6 border border-green-200">
               <div className="text-center mb-4">
                 <div className="text-4xl mb-2">📊</div>
-                <h4 className="text-xl font-bold text-green-800">데이터 분석 전문가</h4>
-                <p className="text-green-600 text-sm">{dbStatus.totalVehicles.toLocaleString()}+ 실제매물 + TCO분석 + 랭킹시스템</p>
+                <h4 className="text-xl font-bold text-green-800">CarFin 차량 추천 에이전트</h4>
+                <p className="text-green-600 text-sm">{dbStatus.totalVehicles.toLocaleString()}+ 실제매물 + TCO분석 + 금융컨설팅</p>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">
                 "TCO(총소유비용) 분석을 통해 모든 비용을 투명하게 계산합니다!

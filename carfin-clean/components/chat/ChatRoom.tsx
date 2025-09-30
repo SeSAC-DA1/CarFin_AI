@@ -686,11 +686,11 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
       case 'user':
         return { name: '고객님', color: 'bg-blue-500', emoji: '👤' };
       case 'concierge':
-        return { name: '컨시어지 매니저', color: 'bg-blue-600', emoji: '🎯' };
+        return { name: 'CarFin 상담 총괄 에이전트', color: 'bg-blue-600', emoji: '🎯' };
       case 'needs_analyst':
-        return { name: '니즈 분석 전문가', color: 'bg-orange-600', emoji: '🔍' };
+        return { name: 'CarFin 니즈 분석 에이전트', color: 'bg-orange-600', emoji: '🔍' };
       case 'data_analyst':
-        return { name: '데이터 분석 전문가', color: 'bg-green-600', emoji: '📊' };
+        return { name: 'CarFin 차량 추천 에이전트', color: 'bg-green-600', emoji: '📊' };
       case 'system':
         return { name: 'CarFin AI', color: 'bg-gray-600', emoji: '🤖' };
     }
