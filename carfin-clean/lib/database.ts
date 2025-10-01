@@ -7,11 +7,10 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  // 🔧 시연용 SSL 설정: AWS RDS 접근 최적화
-  ssl: {
+  // 🔧 AWS RDS SSL 설정: 프로덕션 환경 최적화
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false,
-    require: false
-  },
+  } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 15000, // 시연용 더 긴 타임아웃
