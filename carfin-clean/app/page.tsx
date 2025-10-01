@@ -132,7 +132,7 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-4 max-w-3xl mx-auto leading-relaxed">
             중고차 선택이 복잡하신가요? 3명의 AI 전문가가 CEO부터 신혼부부까지 맞춤 분석해드립니다!
             <br />
-            복잡한 비교는 그만, <strong>170K+ 실제 매물에서 최적의 선택을 찾아드려요.</strong>
+            복잡한 비교는 그만, <strong>{Math.round(dbStatus.totalVehicles / 1000)}K+ 실제 매물에서 최적의 선택을 찾아드려요.</strong>
           </p>
 
           {/* N번째 질문 환영 핵심 메시지 */}
@@ -340,7 +340,7 @@ export default function Home() {
             CEO부터 신혼부부까지 맞춤 분석 • 완전 무료로 지원해드립니다 😊
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            Gemini 2.5 Flash + A2A Protocol • 170K+ 실제 매물 데이터 기반
+            Gemini 2.5 Flash + A2A Protocol • {Math.round(dbStatus.totalVehicles / 1000)}K+ 실제 매물 데이터 기반
           </p>
         </div>
       </div>

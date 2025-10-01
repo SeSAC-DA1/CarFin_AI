@@ -204,6 +204,7 @@ class RedisManager {
       const redisHost = process.env.REDIS_HOST;
       const redisPort = process.env.REDIS_PORT || '6379';
       const redisPassword = process.env.REDIS_PASSWORD;
+      const redisTls = process.env.REDIS_TLS === 'true';
 
       let clientConfig: any;
 
@@ -211,15 +212,19 @@ class RedisManager {
         // Redis URL이 있으면 URL 사용
         clientConfig = { url: redisUrl };
       } else if (redisHost) {
-        // 🔥 AWS Valkey 실제 연결을 위한 충분한 타임아웃
-        const timeoutMs = isDevelopment ? 10000 : 15000; // 개발: 10초, 프로덕션: 15초
+        // 🔥 AWS Valkey 연결 최적화: 충분한 timeout으로 안정적 연결
+        const timeoutMs = isDevelopment ? 60000 : 30000; // 개발: 60초, 프로덕션: 30초
 
         clientConfig = {
           socket: {
             host: redisHost,
             port: parseInt(redisPort),
             connectTimeout: timeoutMs,
+            commandTimeout: timeoutMs,
             lazyConnect: true,
+            tls: redisTls,
+            keepAlive: 30000,
+            noDelay: true,
           }
         };
 
@@ -236,15 +241,25 @@ class RedisManager {
 
       this.client = createClient(clientConfig);
 
-      // 🔥 Valkey 연결 에러 핸들링 - 스마트 폴백 전환
+      // 🔥 Valkey 연결 에러 핸들링 - 상세 디버깅
       this.client.on('error', (err) => {
-        // 연결 오류 로그를 간소화하여 스팸 방지
+        console.error(`❌ AWS Valkey 에러 상세:`);
+        console.error(`   - 메시지: ${err.message}`);
+        console.error(`   - 코드: ${err.code || 'N/A'}`);
+        console.error(`   - 호스트: ${redisHost}:${redisPort}`);
+        console.error(`   - TLS: ${redisTls ? 'enabled' : 'disabled'}`);
+        console.error(`   - 타임아웃: ${timeoutMs}ms`);
+
+        // DNS 조회 실패인 경우
         if (err.message.includes('ENOTFOUND') || err.message.includes('getaddrinfo')) {
-          console.log(`⚠️ AWS Valkey 연결 불가 - Mock Redis로 전환`);
+          console.log(`⚠️ DNS 조회 실패 - Mock Redis로 전환`);
           this.useMockFallback = true;
-        } else {
-          console.error(`❌ AWS Valkey 에러: ${err.message}`);
         }
+        // 타임아웃인 경우
+        else if (err.message.includes('timeout') || err.code === 'ETIMEDOUT') {
+          console.log(`⚠️ 연결 타임아웃 (${timeoutMs}ms) - 시도 계속`);
+        }
+
         this.client = null;
         this.isConnecting = false;
       });

@@ -13,21 +13,27 @@ interface ChatRequest {
   context?: string;
 }
 
-// 예산 추출 함수
+// 🎯 CEO 페르소나 맞춤 예산 추출 함수 (개선)
 function extractBudget(question: string): { min: number; max: number } {
   const budgetPatterns = [
     /(\d+(?:,\d+)*)\s*만원/g,
     /(\d+(?:,\d+)*)\s*천만원/g,
     /(\d+(?:,\d+)*)\s*억/g,
     /예산.*?(\d+(?:,\d+)*)/g,
-    /(\d+(?:,\d+)*)\s*정도/g
+    /(\d+(?:,\d+)*)\s*정도/g,
+    /(\d+(?:,\d+)*)\s*예산/g
   ];
 
-  let budgetAmount = 2500; // 기본값 2500만원
+  let budgetAmount = 4500; // CEO 기본값 4500만원 (프리미엄 범위)
+
+  // 디버깅: 입력 질문 로깅
+  console.log(`🔍 예산 추출 시작: "${question}"`);
 
   for (const pattern of budgetPatterns) {
     const matches = question.match(pattern);
     if (matches) {
+      console.log(`📊 패턴 매칭: ${pattern} → ${matches}`);
+
       const numbers = matches.map(match => {
         const num = match.replace(/[^\d]/g, '');
         return parseInt(num);
@@ -42,6 +48,8 @@ function extractBudget(question: string): { min: number; max: number } {
         } else if (question.includes('억')) {
           budgetAmount = budgetAmount * 10000;
         }
+
+        console.log(`💰 추출된 예산: ${budgetAmount}만원`);
         break;
       }
     }

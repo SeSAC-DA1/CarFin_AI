@@ -70,9 +70,10 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false); // 상세 분석 표시
   // 로딩 메시지 다양화 함수
   const getLoadingMessages = () => {
+    const vehicleCount = dbStats.totalVehicles > 0 ? `${Math.round(dbStats.totalVehicles / 1000)}K+` : '실제';
     const mainMessages = [
       "전문가들이 머리를 맞대고 있어요... 🤝",
-      "117,564대 매물을 꼼꼼히 분석 중... 🔍",
+      `${vehicleCount} 매물을 꼼꼼히 분석 중... 🔍`,
       "니즈 분석가가 열심히 고민하고 있어요... 💭",
       "데이터 분석가가 계산기를 두드리고 있어요... 📊",
       "컨시어지가 완벽한 답을 준비 중... 🎯",
@@ -87,7 +88,7 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
       "완벽한 매칭을 위해 세심하게 분석 중이에요 🎯",
       "최고의 가성비 차량을 선별하고 있어요 🏆",
       "전문가들이 당신의 니즈를 완벽히 파악 중... 🔬",
-      "117,564대 중에서 최고만 골라드릴게요 🌟"
+      `${vehicleCount} 매물 중에서 최고만 골라드릴게요 🌟`
     ];
 
     const randomMain = mainMessages[Math.floor(Math.random() * mainMessages.length)];
@@ -121,8 +122,8 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     impact: number;
   }
 
-  const [totalVehicles, setTotalVehicles] = useState(170412);
-  const [currentMatches, setCurrentMatches] = useState(170412);
+  const [totalVehicles, setTotalVehicles] = useState(0);
+  const [currentMatches, setCurrentMatches] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [isProcessingFilters, setIsProcessingFilters] = useState(false);
   const filterExtractor = new ConversationFilterExtractor();
@@ -974,7 +975,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
               <h3 className="font-bold text-gray-800 mb-3 text-sm">🎯 CarFin 신뢰지표</h3>
               <div className="text-center space-y-3">
                 <div>
-                  <div className="text-lg font-bold text-green-700">{dbStats.totalVehicles > 0 ? dbStats.totalVehicles.toLocaleString() : '117,564'}+</div>
+                  <div className="text-lg font-bold text-green-700">{dbStats.totalVehicles > 0 ? dbStats.totalVehicles.toLocaleString() : '0'}+</div>
                   <div className="text-xs text-gray-700">실제 매물에서 검색</div>
                 </div>
                 <div>
