@@ -151,7 +151,7 @@ class RedisManager {
   private isConnecting = false;
   private useMockFallback = false;
   private connectionAttempts = 0;
-  private maxConnectionAttempts = 3;
+  private maxConnectionAttempts = 5;
   private constructor() {}
 
   static getInstance(): RedisManager {
@@ -212,8 +212,8 @@ class RedisManager {
         // Redis URL이 있으면 URL 사용
         clientConfig = { url: redisUrl };
       } else if (redisHost) {
-        // 🔥 AWS Valkey 연결 최적화: 충분한 timeout으로 안정적 연결
-        const timeoutMs = isDevelopment ? 60000 : 30000; // 개발: 60초, 프로덕션: 30초
+        // 🔥 AWS Valkey 연결 최적화: 클러스터 연결 안정성 중심
+        const timeoutMs = isDevelopment ? 15000 : 10000; // 개발: 15초, 프로덕션: 10초
 
         clientConfig = {
           socket: {

@@ -20,7 +20,7 @@ export class ConversationFilterExtractor {
   private genAI: GoogleGenerativeAI;
 
   constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   }
 
   /**

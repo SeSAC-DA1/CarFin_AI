@@ -7,13 +7,11 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  // 🔥 AWS RDS SSL 설정: Vercel 환경 무조건 연결!
-  ssl: process.env.NODE_ENV === 'production' ? {
+  // 🔥 AWS RDS SSL 설정: 개발/프로덕션 모두 SSL 필수!
+  ssl: {
     rejectUnauthorized: false,
     require: true,
     requestCert: false,
-  } : {
-    rejectUnauthorized: false,
   },
   max: 20,
   idleTimeoutMillis: 30000,
