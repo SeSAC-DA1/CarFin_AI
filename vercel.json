@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd carfin-clean && npm run build",
+  "devCommand": "cd carfin-clean && npm run dev",
+  "installCommand": "cd carfin-clean && npm install",
+  "outputDirectory": "carfin-clean/.next"
+}
