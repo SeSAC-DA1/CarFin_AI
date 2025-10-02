@@ -5,6 +5,8 @@ import { Send, ArrowLeft, Users, RotateCcw } from 'lucide-react';
 import A2AVisualization from '@/components/ui/A2AVisualization';
 import HorizontalVehicleCard from '@/components/ui/HorizontalVehicleCard';
 import CompactVehicleCard from '@/components/ui/CompactVehicleCard';
+import SimpleVehicleCard from '@/components/ui/SimpleVehicleCard';
+import VehicleDetailModal from '@/components/ui/VehicleDetailModal';
 import AgentInsightCard from '@/components/ui/AgentInsightCard';
 import VehicleRecommendationSummary from '@/components/ui/VehicleRecommendationSummary';
 import NthQuestionWelcomeBanner from '@/components/welcome/NthQuestionWelcomeBanner';
@@ -293,11 +295,15 @@ export default function ChatRoom({ initialQuestion, onBack, selectedPersona }: C
     }
   };
 
-  // 📝 메시지 업데이트 시 자동 저장
+  // 📝 메시지 업데이트 시 자동 저장 (Debounced - 2초마다만 저장)
   useEffect(() => {
-    if (messages.length > 0 && userId) {
+    if (messages.length === 0 || !userId) return;
+
+    const saveTimer = setTimeout(() => {
       saveConversation(messages);
-    }
+    }, 2000); // ⚡ 2초 debounce로 과도한 저장 방지
+
+    return () => clearTimeout(saveTimer);
   }, [messages, userId]);
 
   // 🆔 세션 ID 저장
@@ -1399,7 +1405,7 @@ ${feedbackData?.suggestions ? `\n💬 추가 요청사항: ${feedbackData.sugges
   );
 }
 
-// 차량 추천 표시 컴포넌트 (무한 렌더링 방지)
+// 차량 추천 표시 컴포넌트 (가로 스크롤 + 모달)
 function VehicleRecommendationsDisplay({
   message,
   onVehiclesUpdate
@@ -1408,14 +1414,26 @@ function VehicleRecommendationsDisplay({
   onVehiclesUpdate: (vehicles: any[]) => void;
 }) {
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
+    console.log('🚗 VehicleRecommendationsDisplay - message.metadata:', message.metadata);
+    console.log('🚗 VehicleRecommendationsDisplay - vehicles:', message.metadata?.vehicles);
     if (message.metadata?.vehicles) {
       const sortedVehicles = [...message.metadata.vehicles].sort((a: any, b: any) => a.rank - b.rank);
+      console.log('🚗 Sorted vehicles:', sortedVehicles);
       setVehicles(sortedVehicles);
       onVehiclesUpdate(sortedVehicles);
+    } else {
+      console.log('⚠️ No vehicles found in message.metadata');
     }
   }, [message.metadata?.vehicles, onVehiclesUpdate]);
+
+  const handleDetailClick = (vehicle: any) => {
+    setSelectedVehicle(vehicle);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -1426,18 +1444,38 @@ function VehicleRecommendationsDisplay({
         )}
       </div>
 
-      {/* 사용자 비교 최적화 세로 레이아웃 */}
-      <div className="space-y-4 max-w-4xl mx-auto">
-        {vehicles.map((vehicle: any, index: number) => (
-          <div key={`vehicle-${vehicle.rank || index}`} className="w-full">
-            <CompactVehicleCard
-              vehicle={vehicle}
-              personaName={message.metadata?.persona}
-              rank={vehicle.rank}
-            />
+      {/* 가로 스크롤 레이아웃 */}
+      {vehicles.length > 0 ? (
+        <div className="relative">
+          <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-blue-400 scrollbar-track-gray-200">
+            {vehicles.map((vehicle: any, index: number) => {
+              console.log(`🚗 Rendering vehicle ${index}:`, vehicle);
+              return (
+                <SimpleVehicleCard
+                  key={`vehicle-${vehicle.rank || index}`}
+                  vehicle={vehicle}
+                  rank={vehicle.rank}
+                  onDetailClick={() => handleDetailClick(vehicle)}
+                />
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            ⚠️ 차량 데이터를 불러오는 중입니다... (vehicles.length: {vehicles.length})
+          </p>
+        </div>
+      )}
+
+      {/* 상세 정보 모달 */}
+      <VehicleDetailModal
+        vehicle={selectedVehicle}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        personaName={message.metadata?.persona}
+      />
 
       {/* 순위 비교 안내 */}
       <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">

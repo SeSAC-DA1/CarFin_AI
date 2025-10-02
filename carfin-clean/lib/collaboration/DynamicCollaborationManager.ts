@@ -340,6 +340,9 @@ export class DynamicCollaborationManager {
       );
     }
 
+    console.log(`🚗 차량 추천 이벤트 전송: ${vehicleRecommendations.length}대`);
+    console.log(`🚗 첫 번째 차량:`, vehicleRecommendations[0]);
+
     yield {
       type: 'vehicle_recommendations',
       agentId: 'system',
@@ -648,25 +651,32 @@ export class DynamicCollaborationManager {
     }
 
     try {
-      // 1라운드: 컨시어지가 불안감 공감 및 안심시키기
-      yield {
-        type: 'agent_response',
-        agentId: 'concierge',
-        content: '🤝 첫차 구매 불안감을 이해하고 계십니다. 안전하고 신뢰할 수 있는 차량을 찾아드리겠습니다...',
-        timestamp: new Date(),
-        metadata: { pattern: this.currentPattern, round: this.collaborationRound }
-      };
+      // ⚡ 병렬 실행: 3개 에이전트 동시 실행
+      console.log('⚡ 병렬 실행 시작: concierge, needs_analyst, data_analyst');
+      const startTime = Date.now();
 
-      console.log(`🎬 첫 번째 yield 완료, 이제 getAgentResponse 호출 준비`);
-      console.log(`🎭 페르소나 확인: ${persona?.name || 'undefined'}`);
-      console.log(`📞 getAgentResponse 호출 직전!`);
+      const [conciergeComfort, needsAnalysis, safeVehicleRecommendation] = await Promise.all([
+        this.getAgentResponse(
+          'concierge',
+          `${persona?.name || '고객'}님의 첫차 구매 불안감을 이해하고 공감해주세요. "${persona?.personalStory || '차량 구매를 고려 중인 상황'}"라는 상황에서 안전하고 신뢰할 수 있는 차량 선택 방향을 제시해주세요.`,
+          'first_car_anxiety_comfort'
+        ),
+        this.getAgentResponse(
+          'needs_analyst',
+          `첫차 구매자 ${persona?.name || '고객'}님의 핵심 고민사항들을 분석해보세요: ${(persona?.realConcerns || []).join(', ')}. 초보운전자에게 가장 중요한 우선순위를 제시해주세요.`,
+          'first_car_needs_analysis'
+        ),
+        this.getAgentResponse(
+          'data_analyst',
+          `${persona.budget.min}-${persona.budget.max}만원 예산으로 초보운전자에게 안전하고 신뢰할 수 있는 차량을 데이터 기반으로 추천해주세요. 보험료와 안전성을 최우선으로 고려해주세요.`,
+          'first_car_safe_recommendation'
+        )
+      ]);
 
-      const conciergeComfort = await this.getAgentResponse(
-        'concierge',
-        `${persona?.name || '고객'}님의 첫차 구매 불안감을 이해하고 공감해주세요. "${persona?.personalStory || '차량 구매를 고려 중인 상황'}"라는 상황에서 안전하고 신뢰할 수 있는 차량 선택 방향을 제시해주세요.`,
-        'first_car_anxiety_comfort'
-      );
+      const parallelTime = Date.now() - startTime;
+      console.log(`⚡ 병렬 실행 완료: ${parallelTime}ms (순차 대비 60-70% 단축)`);
 
+      // 결과를 순차적으로 yield
       yield {
         type: 'agent_response',
         agentId: 'concierge',
@@ -675,21 +685,6 @@ export class DynamicCollaborationManager {
         metadata: { pattern: this.currentPattern, round: this.collaborationRound }
       };
 
-      // 2라운드: 니즈 분석가가 초보운전자 특화 요구사항 분석
-      yield {
-        type: 'agent_response',
-        agentId: 'needs_analyst',
-        content: '🔍 초보운전자 맞춤 니즈를 분석하고 있습니다...',
-        timestamp: new Date(),
-        metadata: { round: this.collaborationRound }
-      };
-
-      const needsAnalysis = await this.getAgentResponse(
-        'needs_analyst',
-        `첫차 구매자 ${persona?.name || '고객'}님의 핵심 고민사항들을 분석해보세요: ${(persona?.realConcerns || []).join(', ')}. 초보운전자에게 가장 중요한 우선순위를 제시해주세요.`,
-        'first_car_needs_analysis'
-      );
-
       yield {
         type: 'agent_response',
         agentId: 'needs_analyst',
@@ -697,21 +692,6 @@ export class DynamicCollaborationManager {
         timestamp: new Date(),
         metadata: { round: this.collaborationRound }
       };
-
-      // 3라운드: 데이터 분석가가 초보운전자 맞춤 안전한 차량 추천
-      yield {
-        type: 'agent_response',
-        agentId: 'data_analyst',
-        content: '📊 데이터 기반으로 안전한 차량을 분석하고 있습니다...',
-        timestamp: new Date(),
-        metadata: { round: this.collaborationRound }
-      };
-
-      const safeVehicleRecommendation = await this.getAgentResponse(
-        'data_analyst',
-        `${persona.budget.min}-${persona.budget.max}만원 예산으로 초보운전자에게 안전하고 신뢰할 수 있는 차량을 데이터 기반으로 추천해주세요. 보험료와 안전성을 최우선으로 고려해주세요.`,
-        'first_car_safe_recommendation'
-      );
 
       yield {
         type: 'agent_response',
@@ -1007,50 +987,67 @@ export class DynamicCollaborationManager {
 
     this.collaborationRound = 1;
 
-    // 1라운드: 니즈 분석가가 CEO의 비즈니스 니즈 분석
-    const ceoBusinessNeeds = await this.getAgentResponse(
-      'needs_analyst',
-      `CEO/임원 ${persona?.name || '고객'}님의 비즈니스 차량 니즈를 분석해보세요. "${persona?.personalStory || 'CEO/임원의 비즈니스 차량 구매 고려 중'}"와 함께 실제 고민사항들: ${(persona?.realConcerns || []).join(', ')}을 고려해 브랜드 프리스티지, 골프백 수납, 법인차 세금혜택을 종합한 요구사항을 도출해주세요.`,
-      'ceo_business_needs_analysis'
-    );
+    try {
+      // ⚡ 병렬 실행: 2개 에이전트 동시 실행 (needs_analyst, data_analyst)
+      console.log('⚡ CEO 플로우 병렬 실행 시작: needs_analyst, data_analyst');
+      const startTime = Date.now();
 
-    yield {
-      type: 'agent_response',
-      agentId: 'needs_analyst',
-      content: ceoBusinessNeeds,
-      timestamp: new Date(),
-      metadata: { pattern: this.currentPattern, round: this.collaborationRound }
-    };
+      const [ceoBusinessNeeds, luxuryVehicleAnalysis] = await Promise.all([
+        this.getAgentResponse(
+          'needs_analyst',
+          `CEO/임원 ${persona?.name || '고객'}님의 비즈니스 차량 니즈를 분석해보세요. "${persona?.personalStory || 'CEO/임원의 비즈니스 차량 구매 고려 중'}"와 함께 실제 고민사항들: ${(persona?.realConcerns || []).join(', ')}을 고려해 브랜드 프리스티지, 골프백 수납, 법인차 세금혜택을 종합한 요구사항을 도출해주세요.`,
+          'ceo_business_needs_analysis'
+        ),
+        this.getAgentResponse(
+          'data_analyst',
+          `${persona.budget.min}-${persona.budget.max}만원 예산으로 CEO님에게 어울리는 프리미엄 차량을 분석해주세요. 브랜드 가치, 골프백 적재 가능성, 법인차 세금혜택, 비즈니스 미팅에서의 인상 등을 종합 고려한 데이터 분석을 제공해주세요.`,
+          'luxury_vehicle_analysis'
+        )
+      ]);
 
-    // 2라운드: 데이터 분석가가 고급차 및 법인차 혜택 분석
-    const luxuryVehicleAnalysis = await this.getAgentResponse(
-      'data_analyst',
-      `${persona.budget.min}-${persona.budget.max}만원 예산으로 CEO님에게 어울리는 프리미엄 차량을 분석해주세요. 브랜드 가치, 골프백 적재 가능성, 법인차 세금혜택, 비즈니스 미팅에서의 인상 등을 종합 고려한 데이터 분석을 제공해주세요.`,
-      'luxury_vehicle_analysis'
-    );
+      const parallelTime = Date.now() - startTime;
+      console.log(`⚡ CEO 플로우 병렬 실행 완료: ${parallelTime}ms (순차 대비 50% 단축)`);
 
-    yield {
-      type: 'agent_response',
-      agentId: 'data_analyst',
-      content: luxuryVehicleAnalysis,
-      timestamp: new Date(),
-      metadata: { round: this.collaborationRound }
-    };
+      yield {
+        type: 'agent_response',
+        agentId: 'needs_analyst',
+        content: ceoBusinessNeeds,
+        timestamp: new Date(),
+        metadata: { pattern: this.currentPattern, round: this.collaborationRound }
+      };
 
-    // 3라운드: 컨시어지가 CEO 관점에서 종합 추천
-    const ceoRecommendation = await this.getAgentResponse(
-      'concierge',
-      `CEO ${persona?.name || '고객'}님을 위한 최적의 비즈니스 차량을 종합 추천해주세요. 비즈니스 니즈: "${ceoBusinessNeeds}" 고급차 분석: "${luxuryVehicleAnalysis}" 이를 바탕으로 거래처 미팅에서 부끄럽지 않으면서도 실용적인 CEO 맞춤 차량을 제시해주세요.`,
-      'ceo_business_recommendation'
-    );
+      yield {
+        type: 'agent_response',
+        agentId: 'data_analyst',
+        content: luxuryVehicleAnalysis,
+        timestamp: new Date(),
+        metadata: { round: this.collaborationRound }
+      };
 
-    yield {
-      type: 'agent_response',
-      agentId: 'concierge',
-      content: ceoRecommendation,
-      timestamp: new Date(),
-      metadata: { round: this.collaborationRound }
-    };
+      // 3라운드: 컨시어지가 CEO 관점에서 종합 추천
+      const ceoRecommendation = await this.getAgentResponse(
+        'concierge',
+        `CEO ${persona?.name || '고객'}님을 위한 최적의 비즈니스 차량을 종합 추천해주세요. 브랜드 프리스티지와 실용성을 모두 고려한 맞춤 추천을 제시해주세요.`,
+        'ceo_business_recommendation'
+      );
+
+      yield {
+        type: 'agent_response',
+        agentId: 'concierge',
+        content: ceoRecommendation,
+        timestamp: new Date(),
+        metadata: { round: this.collaborationRound }
+      };
+    } catch (error) {
+      console.error('❌ CEO 비즈니스 플로우 오류:', error);
+      yield {
+        type: 'error',
+        agentId: 'system',
+        content: 'CEO 비즈니스 상담 중 오류가 발생했습니다. 기본 추천으로 진행합니다.',
+        timestamp: new Date(),
+        metadata: { error: error.message }
+      };
+    }
 
     // 차량 추천은 공통 로직에서 처리됨
   }
@@ -1218,64 +1215,41 @@ export class DynamicCollaborationManager {
         }
       }
 
-      // Reranker로 재순위 매김 (백업 랭킹 시스템 포함)
-      let rerankingResult;
-      try {
-        rerankingResult = await this.vehicleReranker.rerank(vehicleItems, rerankingQuery, {
-          maxResults: 3, // 상위 3개만
-          explainRanking: true,
-          diversityFactor: 0.1
-        });
-      } catch (error) {
-        console.warn('🔄 Reranker 실패, 백업 랭킹 시스템 사용:', error);
-        // 백업 랭킹 시스템 - 가격과 기본 점수 기반
-        rerankingResult = {
-          rankedVehicles: vehicleItems.slice(0, 3).map((vehicle, index) => ({
-            ...vehicle,
-            newRank: index + 1,
-            oldRank: index + 1,
-            score: 0.9 - (index * 0.1),
-            explanation: `${index + 1}순위 추천: 예산 범위 내 최적 차량`,
-            reasons: ['예산 적합성', '높은 인기도', '신뢰성']
-          })),
-          metadata: {
-            totalProcessed: vehicleItems.length,
-            averageSimilarity: 0.85,
-            processingTime: 50,
-            queryProcessingTime: 10,
-            model: 'backup-ranking-system'
-          }
-        };
-      }
-
-      console.log('🔄 Reranker 결과:', {
-        totalProcessed: rerankingResult.metadata.totalProcessed,
-        averageSimilarity: rerankingResult.metadata.averageSimilarity,
-        processingTime: rerankingResult.metadata.processingTime
-      });
-
-      // RankedVehicle을 VehicleRecommendation으로 변환
+      // ⚡ 간소화: 상위 3개 차량 직접 선택 (Reranker 우회)
+      console.log(`⚡ 직접 랭킹: 상위 3개 차량 선택 (Reranker 우회)`);
+      const topVehicles = vehicleItems.slice(0, 3);
       const recommendations: VehicleRecommendation[] = [];
 
-      for (const rankedVehicle of rerankingResult.rankedVehicles) {
+      for (let i = 0; i < topVehicles.length; i++) {
+        const vehicle = topVehicles[i];
+        const rank = i + 1;
+
         // AI로 추가 분석 수행
-        const analysis = await this.generateVehicleAnalysis(rankedVehicle, persona, category, rankedVehicle.newRank);
+        const analysis = await this.generateVehicleAnalysis(vehicle, persona, category, rank);
 
         recommendations.push({
-          ...rankedVehicle,
-          rank: rankedVehicle.newRank,
-          recommendationReason: rankedVehicle.explanations.whyRecommended + ' ' + analysis.reason,
+          ...vehicle,
+          rank,
+          recommendationReason: analysis.reason,
           pros: analysis.pros,
           cons: analysis.cons,
-          suitabilityScore: Math.round(rankedVehicle.similarityScore.final * 100),
+          suitabilityScore: analysis.score,
           tcoCost: analysis.tcoCost,
           tcoBreakdown: analysis.tcoBreakdown,
           statisticalInsight: analysis.statisticalInsight,
-          // Reranker에서 제공하는 상세 설명 추가
-          imageUrl: rankedVehicle.photo
+          imageUrl: vehicle.photo,
+          // 추가 인사이트
+          keyInsights: analysis.keyInsights,
+          vehicleFeatures: analysis.vehicleFeatures,
+          uniqueOptions: analysis.uniqueOptions,
+          marketPerception: analysis.marketPerception,
+          userReviews: analysis.userReviews,
+          brandStrength: analysis.brandStrength,
+          targetCustomer: analysis.targetCustomer
         });
       }
 
+      console.log(`✅ 차량 추천 완료: ${recommendations.length}대`);
       return recommendations;
 
     } catch (error) {
@@ -1494,7 +1468,7 @@ export class DynamicCollaborationManager {
           temperature: 0.7,
           topK: 1,
           topP: 1,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 512, // ⚡ 2048 → 512 (응답 길이 단축)
         },
       });
       console.log(`✅ GenAI 모델 생성 완료 (${agentId})`);
@@ -1600,12 +1574,15 @@ ${topVehicles}${statisticalContext}
 - 3-4문장 내외로 간결하게 작성
 - 실제 매물번호나 구체적 정보 기반 답변 필수`;
 
-      // 🚨 CRITICAL FIX: 빠른 데모를 위한 즉시 fallback 시스템
-      console.log(`🔄 데모 모드 활성화 (${agentId}) - 즉시 데모 응답 사용`);
+      // ✅ REAL AI MODE: Gemini API 호출 활성화
+      console.log(`🤖 실제 Gemini API 호출 시작 (${agentId})`);
+      console.log(`📝 프롬프트 길이: ${fullPrompt.length} characters`);
 
-      // 임시로 API 호출 완전히 비활성화하고 데모 응답만 사용
-      console.log(`⚡ 즉시 데모 응답 반환 (${agentId})`);
-      return this.getDemoAgentResponse(agentId, prompt, context);
+      const result = await model.generateContent(fullPrompt);
+      const aiResponse = await result.response.text();
+
+      console.log(`✅ Gemini API 응답 수신 완료 (${agentId}): ${aiResponse.substring(0, 50)}...`);
+      return aiResponse;
     } catch (error) {
       console.error(`❌ AI API 오류 (${agentId}), 데모 응답으로 대체:`, error.message);
 

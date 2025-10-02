@@ -140,6 +140,9 @@ export function calculateBrandScore(manufacturer: string): number {
 
 // 연료 타입 기반 점수 (환경성 고려)
 export function calculateFuelTypeScore(fuelType: string): number {
+  // NULL/undefined 처리
+  if (!fuelType) return 0.5;
+
   const fuel = fuelType.toLowerCase();
 
   if (fuel.includes('전기') || fuel.includes('electric')) return 1.0;
